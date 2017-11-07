@@ -1,0 +1,47 @@
+<resources>
+    <string name="app_name">DFAT</string>
+    <string name="permissionNotificationTitle">Berechtigungs Informationen</string>
+    <string name="permissionNotificationMessage">Danke für das Nutzen unserer App!\n\n
+        Damit unsere App wie vorgesehen funktioniert, brauchen wir folgende Berechtigungen:\n\t
+        Berechtigung zum Scannen der Nutzungsdaten ihres Handys, damit wir sehen können, welche Apps momentan laufen etc…\n\t
+        Berechtigung zum Scannen welche Apps installiert sind und welche Berechtigungen bei diesen gesetzt sind.</string>
+    <string name="permissionNotificationPositive">Ich stimme zu!</string>
+    <string name="settings">Einstellungen</string>
+    <string name="impressum">Impressum</string>
+    <string name="help">Hilfe</string>
+    <string name="startScan">Scan starten</string>
+    <string name="stopScan">Scan stoppen</string>
+    <string name="toastStartScan">Scan gestartet</string>
+    <string name="toastStopScan">Scan gestoppt</string>
+    <string name="automaticShutdownMessage">Scan automatisch gestoppt</string>
+    <string name="ProgressbarInfo">Scan gestartet…\nDrücken Sie den Button nochmal, um den Scan zu untersuchen\n\n
+        Hinweis:\nJe länger der Scan läuft, desto genauer ist das Ergebnis des Scans. Wir empfehlen eine Dauer von mindestens 60 Minuten.</string>
+    <string name="analysis">Analysieren</string>
+    <string name="history">Verlauf</string>
+    <string name="blacklist">Blacklist</string>
+    <string name="searchViewHint">Hier suchen…</string>
+    <string name="analysisTextInfo">Wir sollten uns Gedanken machen was für ein Text hier stehen soll!</string>
+    <string name="searchButtonText">Suchen</string>
+    <string name="settingsInfo">Hier werden in Zukunft die einstellbaren Optionen angezeigt</string>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="action_settings">Settings</string>
+    <string name="scanListInfoText">Liste vergangener Scans</string>
+    <string name="appListInfoText">Liste der auffälligen Apps</string>
+    <string name="noCheckboxSelectedTitle">Keine Ressourcen ausgewählt</string>
+    <string name="massReportResourceDialogTitle">Melden</string>
+    <string name="anomalousResourceDialogTitle">Begründung für die Markierung</string>
+    <string name="nonAnomalousResourceDialogTitle">Keine Anomalie entdeckt</string>
+    <string name="noCheckboxSelectedText">Bitte wählen Sie mindestens eine Ressource aus, die sie melden möchten</string>
+    <string name="massReportResourceDialogText">Sie können eine Erklärung eingeben, warum sie diese Ressourcen melden möchten:</string>
+    <string name="nonAnomalousStandardText">Sie können die Resource trotzdem melden und begründen warum!</string>
+    <string name="anomalousResourceDeReportText">Diese Ressource wurde als verdächtig gekennzeichnet. Mit einer optionalen
+        Begründung kann die Benutzung dieser Ressource als harmlos gemeldet werden"</string>
+    <string name="buttonReport">Melden</string>
+    <string name="buttonDeReport">DeReport</string>
+    <string name="buttonCancel">Abbrechen</string>
+    <string name="toastTransmissionConfirmation">Meldung erfolgreich abgeschickt</string>
+    <string name="section_format">Hello World from section: %1$d</string>
+    <string name="getScans">Drück mich!</string>
+    <string name="comingSoon">Hier wird gerade gebaut. Vorsicht Schlaglöcher!</string>
+    <string name="scan_successful">Scan erfolgreich abgeschlossen</string>
+</resources>

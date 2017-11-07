@@ -1,0 +1,128 @@
+package com.op_dfat;
+
+import android.content.Intent;
+import android.graphics.drawable.Drawable;
+import android.media.Image;
+import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ImageView;
+import android.widget.ListView;
+import android.widget.TextView;
+
+import java.util.ArrayList;
+
+public class Activity_app_details extends AppCompatActivity {
+
+    ListView listView;
+    String appName;
+    String timestamp;
+    ArrayList<String> tmp = new ArrayList<>();
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_app_details);
+        Intent intent = getIntent();
+        appName = intent.getStringExtra("appName");
+        timestamp = intent.getStringExtra("timestamp");
+        createList();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_options, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_settings) {
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void createList(){
+
+        ImageView iv = (ImageView) findViewById(R.id.appDetailIcon);
+        iv.setImageDrawable(getResources().getDrawable(R.drawable.boo, null));
+
+        TextView tv = (TextView) findViewById(R.id.appDetailName);
+        tv.setText(appName);
+
+        listView = (ListView) findViewById(R.id.listViewResources);
+
+        ArrayList<String> resourceNames = getResourceListByAppName(appName);
+        ArrayList<String> countList = getCountListByAppName(appName);
+
+        int listSize = resourceNames.size();
+        final Resources resources[] = new Resources[listSize];
+
+        Drawable icon = getResources().getDrawable(R.drawable.boo, null);
+        for(int i = 0; i < listSize; i++){
+            resources[i] = new Resources(countList.get(i), resourceNames.get(i));
+        }
+
+
+        Adapter_App_Details adapter = new Adapter_App_Details(getApplicationContext(), R.id.activity_app_details, resources );
+
+        // Assign adapter to ListView
+        listView.setAdapter(adapter);
+
+        // ListView Item Click Listener
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+
+            }
+        });
+    }
+
+    private ArrayList<String> getResourceListByAppName(String appName){
+        return SqliteDBHelper.getInstance(null).query_select_list("SELECT resource FROM data_analysis WHERE last_used = '" + timestamp + "' AND app_name = '" + appName + "' ORDER BY resource");
+    }
+
+    private ArrayList<String> getCountListByAppName(String appName){
+        return SqliteDBHelper.getInstance(null).query_select_list("SELECT count FROM data_analysis WHERE last_used = '" + timestamp + "' AND app_name = '" + appName + "' ORDER BY resource");
+    }
+
+
+    private boolean checkForAnomaly(String appName){
+        tmp = SqliteDBHelper.getInstance(null).query_select_list("SELECT anomaly FROM data_analysis WHERE last_used = '" + timestamp + "' AND app_name = '" + appName + "'");
+        if(tmp.contains(1)){
+            return true;
+        }else{
+            return false;
+        }
+    }
+
+    private ArrayList<String> getAnomalyResources(String appName){
+        return SqliteDBHelper.getInstance(null).query_select_list("SELECT resource FROM data_analysis WHERE last_used = '" + timestamp + "' AND app_name = '" + appName + "' AND anomaly = 1");
+    }
+
+    public void settingsButton(MenuItem item) {
+        Intent intent = new Intent(getApplicationContext(), SettingsPage.class);
+        startActivity(intent);
+    }
+
+    public void getHelp(MenuItem item){
+
+    }
+
+    public void getAboutUs(MenuItem item){
+
+    }
+}

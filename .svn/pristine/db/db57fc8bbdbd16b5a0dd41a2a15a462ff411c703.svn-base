@@ -1,0 +1,109 @@
+package com.op_dfat;
+
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.support.v4.app.NotificationCompat;
+
+import java.util.Date;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Created by arrigo on 1/15/17.
+ */
+
+public class NotificationHandler {
+
+    private static NotificationHandler notificationHandler = null;
+    private NotificationManager notificationManager;
+    private Context context;
+
+
+    private NotificationHandler (Context context) {
+        this.context = context;
+        notificationManager = (NotificationManager)this.context.getSystemService(Context.NOTIFICATION_SERVICE);
+    }
+
+    public static NotificationHandler getInstance (Context context) {
+        if (notificationHandler == null) {
+            notificationHandler = new NotificationHandler(context);
+        }
+        return notificationHandler;
+    }
+
+
+    // show a notification
+    public void showScanStoppedNotification(String analysis_stop) {
+
+        Intent intent = new Intent(context, Activity_apps.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        intent.putExtra("timestamp", analysis_stop);
+
+        PendingIntent contentIntent = PendingIntent.getActivity(context, 0,
+                intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+
+        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context);
+        notificationBuilder.setSmallIcon(R.drawable.cog);
+        notificationBuilder.setContentTitle("DFAT Scan Information");
+        notificationBuilder.setContentText("Scan was sucsessful");
+        notificationBuilder.setContentIntent(contentIntent);
+        notificationBuilder.setAutoCancel(true);
+
+        NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
+
+        String[] events = {"Scan was sucsessful", "Press Notification to show the results", "of the scan"};
+        for (int i=0; i < events.length; i++) {
+            inboxStyle.addLine(events[i]);
+        }
+        notificationBuilder.setStyle(inboxStyle);
+
+        notificationManager.notify(0, notificationBuilder.build());
+    }
+
+    public void showScanNotification (boolean action, Date analysis_start) {
+
+        Intent intent = new Intent(context, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        PendingIntent contentIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context);
+        notificationBuilder.setSmallIcon(R.drawable.cog);
+        notificationBuilder.setContentTitle("DFAT Scan Information");
+        notificationBuilder.setContentIntent(contentIntent);
+        notificationBuilder.setOngoing(true);
+
+        if (action){
+            String msg = "Scanning... Scan automatically stops at " + Utility.dateTimeSimple(new Date(analysis_start.getTime() + TimeUnit.MINUTES.toMillis(SettingsPage.options_in_minutes[SettingsPage.selectedOptionIndex])));
+
+            notificationBuilder.setContentText(msg);
+
+            NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
+
+            String[] events = {"Scanning...", "Press Notification to open DFAT", "Scan stops at approximately", Utility.dateTimeSimple(new Date(analysis_start.getTime() + TimeUnit.MINUTES.toMillis(SettingsPage.options_in_minutes[SettingsPage.selectedOptionIndex])))};
+            for (int i=0; i < events.length; i++) {
+                inboxStyle.addLine(events[i]);
+            }
+            notificationBuilder.setStyle(inboxStyle);
+        } else {
+
+            String msg = "Scanning... Press Notification to open DFAT";
+
+            notificationBuilder.setContentText(msg);
+
+            NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
+            inboxStyle.setBigContentTitle("DFAT Scan Information");
+
+            String[] events = {"Scanning...", "Press Notification to open DFAT", "Scan stops after the default scan time of:", (int) TimeUnit.MINUTES.toDays(SettingsPage.defaultScanTime) + " days"};
+            for (int i=0; i < events.length; i++) {
+                inboxStyle.addLine(events[i]);
+            }
+            notificationBuilder.setStyle(inboxStyle);
+
+        }
+        notificationManager.notify(0, notificationBuilder.build());
+    }
+}

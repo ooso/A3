@@ -1,0 +1,144 @@
+package com.op_dfat;
+
+import android.app.AppOpsManager;
+import android.content.Context;
+import android.util.Log;
+
+import java.lang.reflect.InvocationTargetException;
+import java.util.Date;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Created by arrigo on 12/6/16.
+ */
+
+public class PermissionLogReader {
+
+    private static PermissionLogReader permissionLogReader = null;
+    private Context context;
+
+    private Date scanIntervalTime;
+
+    private static final Class<?> INT_ARRAY_TYPE = new int[0].getClass();
+    private int[] allOpIDs;
+    private AppOpsManager appOpsManager;
+
+    public static int screen_state = 1; // 1 = SCREEN_ON , 0 = SCREEN_OFF
+    public static float screen_orientation = 5; // value < 0 = SCREEN_FACING_DOWN , value > 0 = SCREEN_FACING_UP
+    public static boolean closeToObject = false; // close to an object? true(1 in DB):false(0 in DB)
+
+    private PermissionLogReader(Context ctx) {
+        // set the context
+        this.context = ctx;
+        // instantiate the variable
+        scanIntervalTime = new Date();
+        // get all the found opIDs
+        allOpIDs = Permission.getAllOps();
+        // get a reference to the AppOpsManager
+        appOpsManager = (AppOpsManager) context.getSystemService (Context.APP_OPS_SERVICE);
+    }
+
+    public static PermissionLogReader getInstance(Context ctx) {
+        if (permissionLogReader == null) {
+            permissionLogReader = new PermissionLogReader(ctx);
+        }
+        return permissionLogReader;
+    }
+
+    public void readPermissionLogReader(UsageManager usageManager, SqliteDBHelper sqliteDB, long start_scan_time) {
+        try
+        {
+            // get the anonymous class, which inherits from AppOpsManger, to get access to private methods of that class,
+            // which can deliver us the information we need
+            Class<? extends AppOpsManager> clsAom = appOpsManager.getClass();
+            // invoke a private method, which returns the list of objects, which have information about the package name of apps
+            // and a list of permissions they apps can use
+            List<?> packageOpsList = (List<?>) clsAom.getMethod ("getPackagesForOps", INT_ARRAY_TYPE).invoke (appOpsManager, allOpIDs);
+
+            for (Object packageOps : packageOpsList)
+            {
+                // get yet again the anonymous class of every object in the list
+                Class<?> clsPackageOps = packageOps.getClass ();
+                // call a private method, wich gives us the package name of the app
+                String packageName = (String)clsPackageOps.getMethod ("getPackageName").invoke (packageOps);
+                // invoke a private method, which returns the list of objects again, that holds information about permissions, which the app has used
+                List<?> opEntryList = (List<?>)clsPackageOps.getMethod ("getOps").invoke (packageOps);
+
+                for (Object oe : opEntryList)
+                {
+                    // get the class of ervery object in the list
+                    Class<?> clsOpEntry = oe.getClass ();
+                    // get the opID used by the app
+                    int oeOpid = (int) clsOpEntry.getMethod ("getOp").invoke (oe);
+                    // get the time the app used that opID
+                    Date time = new Date ((long) clsOpEntry.getMethod ("getTime").invoke (oe));
+                    // if the time is before the start of our scan time, go to the next
+                    if (time.getTime() < start_scan_time)
+                        continue;
+                    // only check the lasted entries
+                    if (scanIntervalTime != null) {
+                        if (time.after(scanIntervalTime)) {
+                            evaluatePermission(usageManager, sqliteDB, oeOpid, packageName, time);
+                        }
+                    }
+                }
+            }
+            scanIntervalTime.setTime(System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1));
+        }
+        catch (InvocationTargetException | NoSuchMethodException e)
+        {
+            Log.e ("PERMISSIONLOGREADER","GET_APP_OPS_STATS permission not set");
+        }
+        catch (Exception e)
+        {
+            Log.e ("PERMISSIONLOGREADER", "PACKAGE_USAGE_STATS permission not set");
+            e.printStackTrace();
+        }
+    }
+
+
+    private void evaluatePermission (UsageManager usageManager, SqliteDBHelper sqliteDB, int oeOpid, String packageName, Date time) {
+        // check, whether a app with that packagename is currently running
+        UsageManager.State state = usageManager.checkUsageLog(packageName, time);
+        int running = 0;
+
+        switch (state) {
+            case EXCEPTION:
+                running = -100;
+                break;
+            case UNKNOWN:
+                running = -2;
+                break;
+            case SYSTEM_SERVICE:
+                running = -1;
+                break;
+            case INACTIV:
+                running = 0;
+                break;
+            case RUNNING_BG:
+                running = 1;
+                break;
+            case RUNNING_FG:
+                running = 2;
+                break;
+            case USER_INTERACTION:
+                running = 3;
+                break;
+        }
+
+        String opidName; //= Permission.opIDToPermission(oeOpid);
+        // convert opid into respectiv permission entry
+        if (Permission.permissionDictionary.containsKey(oeOpid)) {
+            opidName = Permission.permissionDictionary.get(oeOpid)[0];
+        } else {
+            opidName = ""+ oeOpid;
+        }
+
+        // insert log data into sqlite DB
+        sqliteDB.insert_into_apps_logged(packageName);
+        sqliteDB.insert_into_apps_used_resources(packageName, opidName);
+        sqliteDB.insert_into_data_aggregate(packageName, opidName, time, running, screen_state, Math.round(screen_orientation), closeToObject);
+    }
+
+}

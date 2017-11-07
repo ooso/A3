@@ -1,0 +1,23 @@
+package com.op_dfat;
+
+/**
+ * Created by fakerinc on 18.12.16.
+ */
+
+public class Resources {
+
+    public String count;
+    public String resource;
+    public boolean anomalous;
+
+    public Resources(){
+        super();
+    }
+
+    public Resources(String count, String resource, boolean anomalous){
+        this.count = count;
+        this.resource = resource;
+        this.anomalous = anomalous;
+    }
+
+}

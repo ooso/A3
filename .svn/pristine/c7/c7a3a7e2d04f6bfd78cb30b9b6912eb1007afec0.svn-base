@@ -1,0 +1,67 @@
+package com.op_dfat;
+
+import android.content.Context;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static android.graphics.Color.RED;
+
+
+public class Adapter_App_Details extends ArrayAdapter<Resources> {
+
+    Context context;
+    private int layoutResourceId;
+    private List<Resources> resources;
+    private String packageName;
+    SqliteDBHelper sqliteDBHelper;
+
+    public Adapter_App_Details(Context context, int layoutResourceId, List<Resources> resources, String packageName){
+        super(context, layoutResourceId, resources);
+        this.context = context;
+        this.layoutResourceId = layoutResourceId;
+        this.resources = resources;
+        this.packageName = packageName;
+    }
+
+    @Override
+    public View getView(int position, View convertView, ViewGroup parent) {
+
+        LayoutInflater inflater = (LayoutInflater) context
+                .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        View rowView = inflater.inflate(R.layout.adapter_app_details, parent, false);
+        TextView tvCount = (TextView) rowView.findViewById(R.id.resourceCount);
+        TextView tvResource = (TextView) rowView.findViewById(R.id.resource);
+        CheckBox cbSelected = (CheckBox) rowView.findViewById(R.id.checkboxMassReport);
+
+        sqliteDBHelper = SqliteDBHelper.getInstance(context);
+
+        // change the resource count and resource name
+        tvCount.setText(resources.get(position).count + "x");
+        tvResource.setText(resources.get(position).resource);
+
+        if(resources.get(position).anomalous){
+            tvResource.setTextColor(RED);
+        }
+
+        if(alreadyReported(packageName, resources.get(position).resource)){
+            cbSelected.setAlpha(.5f);
+            cbSelected.setClickable(false);
+            cbSelected.setEnabled(false);
+        }
+        return rowView;
+    }
+
+    private boolean alreadyReported(String app, String res) {
+        ArrayList<String> temp = sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.REPORTED + " FROM " + SqliteDBStructure.DATA_ANALYZING + " WHERE " + SqliteDBStructure.APP_NAME + " = '" + app + "' AND " + SqliteDBStructure.RESOURCE + " = '" + res + "'");
+        return temp.contains("1");
+    }
+}

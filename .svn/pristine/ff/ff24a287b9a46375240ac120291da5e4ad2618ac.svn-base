@@ -1,0 +1,61 @@
+package com.op_dfat;
+
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.util.Log;
+
+import java.util.ArrayList;
+
+/**
+ * Created by arrigo on 1/25/17.
+ */
+
+public class InternetConnectionReceiver extends BroadcastReceiver {
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        if (Utility.isInternetAvailable(context)) {
+            sendRawData(context);
+        }
+    }
+
+    void sendRawData (Context context) {
+
+        final SqliteDBHelper sqliteDBHelper = SqliteDBHelper.getInstance(context);
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                ArrayList<ArrayList<String>> rawData = new ArrayList<>();
+                rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.APP_NAME + " FROM " + SqliteDBStructure.SAVE_SCAN+ ";"));
+                rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.OPID_NAME + " FROM " + SqliteDBStructure.SAVE_SCAN+ ";"));
+                rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.TIME_STAMP + " FROM " + SqliteDBStructure.SAVE_SCAN+ ";"));
+                rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.RUNNING + " FROM " + SqliteDBStructure.SAVE_SCAN+ ";"));
+                rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.SCREEN_STATE + " FROM " + SqliteDBStructure.SAVE_SCAN+ ";"));
+                rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.SCREEN_ORIENTATION + " FROM " + SqliteDBStructure.SAVE_SCAN+ ";"));
+                rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.CLOSE_TO_OBJECT + " FROM " + SqliteDBStructure.SAVE_SCAN+ ";"));
+                rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.SCAN_TIME + " FROM " + SqliteDBStructure.SAVE_SCAN+ ";"));
+                for(int i = 0; i < rawData.get(0).size(); i++){
+                    MyClient.POST_rawdata(rawData.get(0).get(i), rawData.get(1).get(i), rawData.get(2).get(i), rawData.get(3).get(i), rawData.get(4).get(i), rawData.get(5).get(i), rawData.get(6).get(i), rawData.get(7).get(i));
+                }
+                for(int i = 0; i < rawData.get(0).size(); i++){
+                    rawData.get(i).clear();
+                }
+                rawData.clear();
+
+                rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.APP_NAME + " FROM " + SqliteDBStructure.SAVE_ANOMALIES+ ";"));
+                rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.RESOURCE + " FROM " + SqliteDBStructure.SAVE_ANOMALIES+ ";"));
+                rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.ANOMALY_REASON + " FROM " + SqliteDBStructure.SAVE_ANOMALIES+ ";"));
+                rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.FROM_USER + " FROM " + SqliteDBStructure.SAVE_ANOMALIES+ ";"));
+                for (int i = 0; i < rawData.get(0).size(); i++) {
+                    MyClient.POST_Anomaly(rawData.get(0).get(i), rawData.get(1).get(i),rawData.get(2).get(i), rawData.get(3).get(i));
+                }
+
+                sqliteDBHelper.query("DELETE FROM " + SqliteDBStructure.SAVE_SCAN);
+                sqliteDBHelper.query("DELETE FROM " + SqliteDBStructure.SAVE_ANOMALIES);
+            }
+        });
+        Log.d("MAIN", "Send saved data");
+    }
+}

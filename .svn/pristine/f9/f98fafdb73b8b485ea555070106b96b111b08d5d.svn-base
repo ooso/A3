@@ -1,0 +1,35 @@
+package com.op_dfat;
+
+import android.content.Context;
+import android.content.pm.PackageManager;
+import android.graphics.drawable.Drawable;
+import android.util.Log;
+
+/**
+ * Created by arrigo on 12/21/16.
+ */
+
+public class Utility {
+
+    public static String packageToAppName(Context context, String packageName) {
+        PackageManager packageManager= context.getApplicationContext().getPackageManager();
+
+        try {
+            return (String) packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0));
+        } catch (PackageManager.NameNotFoundException e) {
+            Log.d("UTILITY", "app name for " + packageName + " not found");
+            return packageName;
+        }
+    }
+
+    public static Drawable getAppIcon(Context context, String packageName) {
+        PackageManager packageManager= context.getApplicationContext().getPackageManager();
+
+        try {
+            return packageManager.getApplicationIcon(packageName);
+        } catch (PackageManager.NameNotFoundException e) {
+            Log.d("UTILITY", "app icon for " + packageName + " not found");
+        }
+        return null;
+    }
+}

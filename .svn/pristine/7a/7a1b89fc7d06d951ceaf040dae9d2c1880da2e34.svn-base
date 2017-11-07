@@ -1,0 +1,37 @@
+<resources>
+    <string name="app_name">DFAT</string>
+    <string name="permissionNotificationTitle">Permission Usage Info</string>
+    <string name="permissionNotificationMessage">Thank you for using our app!
+        In order for our App to work properly, we need the following permissions:\n\t
+        Permission to scan your phone\'s usage stats, so we can check which apps are currently running etc..\n\t
+        Permission to scan which of your installed apps use what permission at a certain point\n\t
+        Permission to write the data we found through our analysis to your phones storage</string>
+    <string name="permissionNotificationPositive">I\'m OK with that</string>
+    <string name="settings">Settings</string>
+    <string name="impressum">About us</string>
+    <string name="help">Help</string>
+    <string name="startScan">start Scan</string>
+    <string name="stopScan">stop Scan</string>
+    <string name="toastStartScan">Started analyzing…</string>
+    <string name="toastStopScan">Completed. Switch to "old", to see the scan</string>
+    <string name="automaticShutdownMessage">Automatic shutdown due to long analysis period. Switch to "old", to see the scan</string>
+    <string name="ProgressbarInfo">Analyzing…\nPress the button again to evaluate the analysis\n\n
+        Hint:\nThe longer the duration of the scan, the more detailed the scan. We recommend a duration of at least 60 minutes.</string>
+    <string name="newAnalysis">New</string>
+    <string name="oldAnalysis">Old</string>
+    <string name="blacklist">Blacklist</string>
+    <string name="searchViewHint">Search here…</string>
+    <string name="analysisTextInfo">No analysis to be shown</string>
+    <string name="searchButtonText">Search</string>
+    <string name="settingsInfo">There will be options displayed here</string>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="action_settings">Settings</string>
+    <string name="scanListInfoText">List of past scans</string>
+    <string name="appListInfoText">List of suspicious apps</string>
+    <string name="section_format">Hello World from section: %1$d</string>
+    <string name="getScans">Click me!</string>
+    <string name="comingSoon">Under Construction</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+</resources>

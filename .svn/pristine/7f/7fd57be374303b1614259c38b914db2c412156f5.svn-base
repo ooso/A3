@@ -1,0 +1,226 @@
+package com.op_dfat;
+
+import android.app.ProgressDialog;
+import android.content.Intent;
+import android.graphics.drawable.Drawable;
+import android.os.AsyncTask;
+import android.os.Bundle;
+import android.support.v7.app.AlertDialog;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.SearchView;
+import android.text.Html;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.WindowManager;
+import android.widget.AdapterView;
+import android.widget.Filter;
+import android.widget.ListView;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+public class Activity_apps extends AppCompatActivity {
+
+    private ListView listView;
+    private SearchView sv;
+    private Filter filter;
+    private  String timestamp;
+
+    private SqliteDBHelper sqliteDBHelper;
+    private ProgressDialog progressDialog;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_apps);
+
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN);
+
+        sv = (SearchView) findViewById(R.id.searchViewApps);
+        listView = (ListView) findViewById(R.id.listViewApps);
+
+        sqliteDBHelper = SqliteDBHelper.getInstance(this);
+
+        Intent intent = getIntent();
+        timestamp = intent.getStringExtra("timestamp");
+        
+        createList();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_options, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_settings) {
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void createList(){
+
+        new AsyncTask<Void, Void, List<Apps>>() {
+
+            @Override
+            protected void onPreExecute() {
+                if (!Activity_apps.this.isFinishing())
+                    progressDialog = ProgressDialog.show(Activity_apps.this, "LOADING", "Loading scan result");
+            }
+
+            @Override
+            protected List<Apps> doInBackground(Void... voids) {
+                // get all the package names that were logged at the given time stamp
+                ArrayList<String> apps = getPackageNames();
+                // create an array of app objects, which holds all the necessary information about all the found apps
+                final List<Apps> appsList = new ArrayList<>();
+
+                for (String packageName: apps) {
+                    Drawable icon = Utility.getAppIcon(getApplicationContext(), packageName);
+                    String appName = Utility.packageToAppName(getApplicationContext(), packageName);
+                    String resource = getHighestResourceForAppName(packageName);
+                    String count = getCountForHighestResource(packageName, resource);
+                    int anomalyFound = (checkForAnomaly(packageName)?1:0);
+
+                    Apps tmp = new Apps(icon, appName, packageName, count, resource, null, timestamp, anomalyFound);
+
+                    if (!appsList.contains(tmp)) {
+                        appsList.add(tmp);
+                    }
+                }
+
+                Collections.sort(appsList, Apps.AppComparator.decending(Apps.AppComparator.getComparator(Apps.AppComparator.SORT_BY_ANOMALY, Apps.AppComparator.SORT_BY_NAME)));
+
+                return appsList;
+            }
+
+            @Override
+            protected void onPostExecute(final List<Apps> appsList) {
+
+                Adapter_Apps adapter = new Adapter_Apps(getApplicationContext(), R.id.activity_apps, appsList);
+
+                // Assign adapter to ListView
+                listView.setAdapter(adapter);
+
+                adapter.notifyDataSetChanged();
+
+                // disables the default TextFilter
+                listView.setTextFilterEnabled(false);
+                // gets filter for the adapter
+                filter = adapter.getFilter();
+                // sets up the searchView
+                setupSearchView();
+                // ListView Item Click Listener
+                listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+
+                    @Override
+                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                        setupAndSendAppDetails(appsList.get(position).packageName, appsList.get(position).appName);
+                    }
+                });
+
+                progressDialog.dismiss();
+            }
+
+        }.execute();
+    }
+
+    //Return aller Paket Namen, die zum Analysezeitpunt "timeStamp" in der DB stehen
+    private ArrayList<String> getPackageNames(){
+        return sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.APP_NAME + " FROM " + SqliteDBStructure.APPS_LOGGED_AT_SCAN_TIME + " WHERE " + SqliteDBStructure.SCAN_TIME + " = '" + timestamp + "'");
+    }
+
+    private String getHighestResourceForAppName(String appName){
+        ArrayList<String> tmp = sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.RESOURCE + " FROM "  + SqliteDBStructure.DATA_ANALYZING + " WHERE " + SqliteDBStructure.SCAN_TIME + " = '" + timestamp + "' AND " + SqliteDBStructure.APP_NAME + " = '" + appName + "' ORDER BY " + SqliteDBStructure.COUNT  + " DESC");
+        if(!tmp.isEmpty()){
+            return tmp.get(0);
+        }else{
+            return null;
+        }
+    }
+
+    private String getCountForHighestResource(String appName, String resource){
+        ArrayList<String> tmp = sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.COUNT + " FROM " + SqliteDBStructure.DATA_ANALYZING + " WHERE " + SqliteDBStructure.SCAN_TIME + " = '" + timestamp + "' AND " + SqliteDBStructure.APP_NAME + " = '" + appName + "' AND " + SqliteDBStructure.RESOURCE + " = '" + resource + "'" + " ORDER BY " + SqliteDBStructure.COUNT + " DESC");
+        if(!tmp.isEmpty()){
+            return tmp.get(0);
+        }else{
+            return null;
+        }
+    }
+
+    private boolean checkForAnomaly(String appName){
+        ArrayList<String> tmp = sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.ANOMALY + " FROM " + SqliteDBStructure.DATA_ANALYZING + " WHERE " + SqliteDBStructure.SCAN_TIME + " = '" + timestamp + "' AND " + SqliteDBStructure.APP_NAME + " = '" + appName + "'");
+        return tmp.contains("1");
+    }
+
+    // Sets up the SearchView
+    private void setupSearchView(){
+        sv.setIconifiedByDefault(false);
+        sv.setOnQueryTextListener(
+                new android.support.v7.widget.SearchView.OnQueryTextListener(){
+
+                    @Override
+                    public boolean onQueryTextSubmit(String query) {
+
+                        return false;
+                    }
+
+                    @Override
+                    public boolean onQueryTextChange(String newText) {
+                        filter.filter(newText);
+                        return true;
+                    }
+                }
+        );
+        sv.setSubmitButtonEnabled(false);
+        sv.setQueryHint("Search Here");
+    }
+
+    void setupAndSendAppDetails(String packageName, String appName) {
+        Intent intent = new Intent(getApplicationContext(), Activity_app_details.class);
+        intent.putExtra("packageName", packageName);
+        intent.putExtra("appName", appName);
+        intent.putExtra("timestamp", timestamp);
+        startActivity(intent);
+    }
+
+    public void settingsButton(MenuItem item) {
+        Intent intent = new Intent(getApplicationContext(), SettingsPage.class);
+        startActivity(intent);
+    }
+
+    public void getHelp(MenuItem item){
+
+    }
+
+    public void getAboutUs(MenuItem item){
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+
+        builder.setTitle("Impressum");
+        android.content.res.Resources res = getResources();
+
+        String text = String.format(res.getString(R.string.ImpressumText));
+
+        builder.setMessage(Html.fromHtml(text)).show();
+
+
+    }
+    public void getAppsToScan(MenuItem item){
+        Intent intent = new Intent(getApplicationContext(), Activity_Apps_to_scan.class);
+        startActivity(intent);
+    }
+}

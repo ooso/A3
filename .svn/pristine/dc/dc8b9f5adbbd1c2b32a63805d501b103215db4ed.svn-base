@@ -1,0 +1,128 @@
+package com.op_dfat;
+
+import android.content.Context;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.Filter;
+import android.widget.Filterable;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import java.util.ArrayList;
+import java.util.List;
+
+
+public class Adapter_Apps_to_scan extends ArrayAdapter<Apps> implements Filterable {
+
+    Context context;
+    private List<Apps> data;
+    private List<Apps> filtered = new ArrayList<>();
+    private Filter filter;
+
+
+    public Adapter_Apps_to_scan(Context context, int layoutResourceId, List<Apps> data){
+        super(context, layoutResourceId);
+        this.context = context;
+        this.data = data;
+        this.filtered = this.data;
+    }
+
+    @Override
+    public View getView(int position, View convertView, ViewGroup parent) {
+
+        LayoutInflater inflater = (LayoutInflater) context
+                .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        View rowView = inflater.inflate(R.layout.adapter_apps_to_scan, parent, false);
+        ImageView iv = (ImageView) rowView.findViewById(R.id.appToScanIcon);
+        TextView tv = (TextView) rowView.findViewById(R.id.appToScanName);
+        CheckBox cb = (CheckBox) rowView.findViewById(R.id.apptoScanCheckbox);
+
+        final Apps app = getItem(position);
+
+        // set the icon and appName for the list item
+        iv.setImageDrawable(app.icon);
+        tv.setText(app.appName);
+
+        if (ExcludedApps.isAppExcluded(app.packageName))
+            cb.setChecked(false);
+        else
+            cb.setChecked(true);
+
+        // checks if the checkboxes are changed and puts the unchecked items in a list to exclude them from the scan
+        cb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if(!isChecked){
+                    // Add the packageName to the list
+                    ExcludedApps.addToExcludedAppsList(app.packageName);
+                }else{
+                    // remove the packageName to the list
+                    ExcludedApps.removeFromExcludedAppsList(app.packageName);
+                }
+            }
+        });
+
+        return rowView;
+    }
+
+    @Override
+    public int getCount() {
+        return filtered.size();
+    }
+
+    @Nullable
+    @Override
+    public Apps getItem(int position) {
+        return filtered.get(position);
+    }
+
+    @NonNull
+    @Override
+    public Filter getFilter() {
+        if (filter == null) {
+            filter = new FilterLauncherApps();
+        }
+        return filter;
+    }
+
+    private class FilterLauncherApps extends Filter {
+
+        @Override
+        protected FilterResults performFiltering(CharSequence charSequence) {
+
+            FilterResults results = new FilterResults();
+
+            if (charSequence != null && charSequence.length() != 0) {
+                List<Apps> resultList = new ArrayList<>();
+                for (Apps app: data) {
+                    if (app.appName.toLowerCase().contains(charSequence.toString().toLowerCase())) {
+                        resultList.add(app);
+                    }
+                }
+
+                results.count = resultList.size();
+                results.values = resultList;
+            } else {
+                results.count = data.size();
+                results.values = data;
+            }
+            return results;
+        }
+
+        @Override
+        protected void publishResults(CharSequence charSequence, FilterResults filterResults) {
+            filtered = (List<Apps>) filterResults.values;
+
+            notifyDataSetChanged();
+        }
+    }
+
+
+}

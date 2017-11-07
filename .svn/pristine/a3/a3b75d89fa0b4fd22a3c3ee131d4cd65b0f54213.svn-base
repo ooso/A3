@@ -1,0 +1,32 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/fragment_blacklist"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.op_dfat.Fragment_blacklist">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <TextView
+            android:id="@+id/blacklistTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/blacklistTitle"
+            android:textAlignment="center"
+            android:textAppearance="@style/TextAppearance.AppCompat.Large"/>
+
+        <android.support.v7.widget.SearchView
+            android:id="@+id/searchViewBlacklist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/blacklistTitle" />
+
+        <ListView
+            android:id="@+id/listViewBlacklist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/searchViewBlacklist"/>
+    </RelativeLayout>
+
+</FrameLayout>

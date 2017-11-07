@@ -1,0 +1,150 @@
+package com.op_dfat;
+
+import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.AppOpsManager;
+import android.app.usage.UsageStats;
+import android.app.usage.UsageStatsManager;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.SystemClock;
+import android.provider.Settings;
+import android.support.v7.app.AlertDialog;
+import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Created by arrigo on 12/4/16.
+ */
+
+public class UsageManager {
+
+    public static final int MY_PERMISSIONS_REQUEST_PACKAGE_USAGE_STATS = 1;
+
+    public static UsageManager usageManager = null;
+
+    private Context context;
+    private Activity activity;
+
+    private Date checkDate;
+
+    private UsageStatsManager lUsageStatsManager;
+
+    public enum State {
+        UNKNOWN, // -1
+        INACTIV, // 0
+        RUNNING_BG, // 1
+        RUNNING_FG // 2
+    }
+
+    private UsageManager(Context ctx, Activity act) {
+        this.context = ctx;
+        this.activity = act;
+        checkDate = new Date();
+    }
+
+    public static UsageManager getInstance(Context cxt, Activity act) {
+        if (usageManager == null) {
+            usageManager = new UsageManager(cxt, act);
+        }
+        return usageManager;
+    }
+
+    public boolean hasPermission() {
+        AppOpsManager appOps = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
+        int mode = appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), context.getPackageName());
+        return mode == AppOpsManager.MODE_ALLOWED;
+    }
+
+    public void setPermission () {
+        // check, whether the phone has permission to access the phone's usage stats
+        if (!hasPermission()) {
+            Intent intent = new Intent();
+            intent.setAction(Settings.ACTION_USAGE_ACCESS_SETTINGS);
+            intent.addCategory(Intent.CATEGORY_DEFAULT);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
+            intent.addFlags(Intent.FLAG_ACTIVITY_TASK_ON_HOME);
+            activity.startActivityForResult(intent, MY_PERMISSIONS_REQUEST_PACKAGE_USAGE_STATS);
+        }
+    }
+
+
+    public Map<String, UsageStats> readUsageLog() {
+        setPermission();
+        // get a reference to the UsageStatsManager
+        lUsageStatsManager = (UsageStatsManager) context.getSystemService(Context.USAGE_STATS_SERVICE);
+        // get all usage stats of the day
+        return lUsageStatsManager.queryAndAggregateUsageStats(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1), System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1));
+    }
+
+
+    public State checkUsageLog(String packageName, Date accessTime) {
+        Map<String, UsageStats> lUsageStatsList = readUsageLog();
+
+        if (lUsageStatsList != null && lUsageStatsList.size() != 0) {
+            if (lUsageStatsList.containsKey(packageName)) {
+                UsageStats usageStat = lUsageStatsList.get(packageName);
+
+                return checkAppStatus(usageStat, packageName, accessTime);
+            } else {
+                // That's odd...
+                return State.UNKNOWN;
+            }
+        } else {
+            Log.d("USAGEMANAGER", "usage permission not set");
+        }
+        return State.UNKNOWN;
+    }
+
+    private State checkAppStatus (UsageStats u, String packageName, Date accessTime) {
+
+        checkDate.setTime(u.getLastTimeUsed());
+
+        if (lUsageStatsManager.isAppInactive(packageName)) {
+            Log.d("INACTIV", Utility.packageToAppName(context, u.getPackageName()) + " = " + checkDate);
+            return State.INACTIV;
+        } else {
+            if (packageName.equals(u.getPackageName())) {
+                if (u.getLastTimeUsed() >= accessTime.getTime() - TimeUnit.SECONDS.toMillis(30) &&
+                        u.getLastTimeStamp() <= accessTime.getTime() + TimeUnit.SECONDS.toMillis(1)) {
+                    Log.d("IN_FOREGROUND", Utility.packageToAppName(context, u.getPackageName()) + " = " + checkDate);
+                    return State.RUNNING_FG;
+                } else {
+                    check_services(u.getPackageName());
+                    Log.d("IN_BACKGROUND", Utility.packageToAppName(context, u.getPackageName()) + " = " + checkDate);
+                    return State.RUNNING_BG;
+                }
+            }
+            return State.UNKNOWN;
+        }
+    }
+
+    public List<ActivityManager.RunningServiceInfo> read_running_services() {
+        ActivityManager activityManager =(ActivityManager)context.getSystemService(Context.ACTIVITY_SERVICE);
+        return activityManager.getRunningServices(Integer.MAX_VALUE);
+    }
+
+    public void check_services(String process) {
+        List<ActivityManager.RunningServiceInfo> runningServiceInfos = read_running_services();
+
+        if (runningServiceInfos.size() != 0 && runningServiceInfos != null) {
+            for(ActivityManager.RunningServiceInfo r: runningServiceInfos) {
+                if (r.process.equals(process) && r.restarting == 0) {
+                    // currently running services
+                    //Log.d("SERVICE", getAppNameFromPackage(r.service.getPackageName()) + " - process: "+ getAppNameFromPackage(r.process));
+                }
+            }
+        } else {
+            Log.d("Error", "Error");
+        }
+    }
+}

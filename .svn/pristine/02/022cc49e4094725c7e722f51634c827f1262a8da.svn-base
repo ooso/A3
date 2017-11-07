@@ -1,0 +1,186 @@
+package com.op_dfat;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.CompoundButton;
+import android.widget.Spinner;
+import android.widget.Switch;
+import android.widget.TextView;
+
+import org.w3c.dom.Text;
+
+import java.util.Dictionary;
+import java.util.concurrent.TimeUnit;
+
+
+/**
+ * Created by Marvin on 15.11.2016.
+ */
+
+public class SettingsPage extends AppCompatActivity {
+    // view component variables
+    private Spinner spinner, spinnerInterval;
+    private TextView textView;
+    private Switch switcher;
+
+    // variabeles for the fixed scan period
+    final String[] options = new String[] {"30 Minutes", "1 hour", "12 hours", "1 Day"};
+
+    public final static long[] options_in_minutes = new long[]{30, 60, TimeUnit.HOURS.toMinutes(12), TimeUnit.DAYS.toMinutes(1)};
+    public static boolean fixedPeriodScan;
+    public static String selectedOption;
+    public static int selectedOptionIndex;
+    // default scan time
+    public static long defaultScanTime = TimeUnit.DAYS.toMinutes(2);
+
+    // variabeles for the scan interval
+    final String[] intervalOptions = new String[] {"Every 5 Seconds", "Every 3 Seconds", "Every 1 Second"};
+
+    public final static long[] intervalOptions_in_seconds = new long[]{5, 3, 1};
+    public static String selectedOptionInterval;
+    public static int selectedOptionIndexInterval;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.settingspage);
+
+        // load in saved variables, if any have been saved
+        if (savedInstanceState != null) {
+            fixedPeriodScan = savedInstanceState.getBoolean("fixedPeriodScan");
+            selectedOption = savedInstanceState.getString("selectedOption");
+            selectedOptionInterval = savedInstanceState.getString("selectedOptionInterval");
+        }
+
+        // get reference to the view components
+        spinner = (Spinner) findViewById(R.id.spinner);
+        spinnerInterval = (Spinner) findViewById(R.id.spinnerInterval);
+        textView = (TextView) findViewById(R.id.textView);
+        switcher = (Switch) findViewById(R.id.switch1);
+
+        // setup view components
+        setupComponents();
+
+        switcher.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                if (!switcher.isChecked()) {
+                    fixedPeriodScan = false;
+                    textView.setVisibility(View.INVISIBLE);
+                    spinner.setVisibility(View.INVISIBLE);
+                } else {
+                    fixedPeriodScan = true;
+                    textView.setVisibility(View.VISIBLE);
+                    spinner.setVisibility(View.VISIBLE);
+                }
+            }
+        });
+
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                selectedOption = options[i];
+                selectedOptionIndex = i;
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+                // do nothing
+            }
+        });
+
+        spinnerInterval.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                selectedOptionInterval = intervalOptions[i];
+                selectedOptionIndexInterval = i;
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+                // do nothing
+            }
+        });
+
+        if (savedInstanceState == null) {
+            spinner.setSelection(0);
+            spinnerInterval.setSelection(0);
+            selectedOptionIndex = 0;
+            selectedOptionIndexInterval = 0;
+        } else {
+            spinner.setSelection(selectedOptionIndex);
+            spinnerInterval.setSelection(selectedOptionIndexInterval);
+        }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean("fixedPeriodScan", fixedPeriodScan);
+        outState.putString("selectedOption", selectedOption);
+        outState.putString("selectedOptionInterval", selectedOptionInterval);
+    }
+
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+
+        int id = item.getItemId();
+        if (id == R.id.impressum) {
+            // do stuff
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+
+    public void getHelp(MenuItem item) {
+
+    }
+
+    public void getAboutUs(MenuItem item) {
+
+
+    }
+
+    void setupComponents () {
+        setupSpinners();
+        setupSwitcher();
+    }
+    
+    void setupSpinners () {
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, options);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+
+        ArrayAdapter<String> adapter1 = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, intervalOptions);
+        adapter1.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerInterval.setAdapter(adapter1);
+    }
+
+    void setupSwitcher () {
+        switcher.setChecked(fixedPeriodScan);
+        if (switcher.isChecked()) {
+            textView.setVisibility(View.VISIBLE);
+            spinner.setVisibility(View.VISIBLE);
+            spinner.setSelection(selectedOptionIndex);
+        } else {
+            textView.setVisibility(View.INVISIBLE);
+            spinner.setVisibility(View.INVISIBLE);
+            spinner.setSelection(selectedOptionIndex);
+        }
+    }
+}

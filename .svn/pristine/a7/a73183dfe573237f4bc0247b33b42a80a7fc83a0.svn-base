@@ -1,0 +1,311 @@
+package com.op_dfat;
+
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.SQLException;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+import android.database.sqlite.SQLiteStatement;
+import android.util.Log;
+
+import java.util.ArrayList;
+import java.util.Date;
+
+/**
+ * Created by arrigo on 11/24/16.
+ */
+
+public class SqliteDBHelper extends SQLiteOpenHelper {
+
+    // static reference to this instance of the class
+    private static SqliteDBHelper sqliteDBHelper_instance = null;
+    // reference to the respective activity context
+    private Context context;
+    // current version of the database (any changes to the DB -> update version number)
+    public static int VERSION = 40;
+
+    // get all the data from data_aggregate and data_analyzing
+    public static final String GET_DATA_AGGREGATE = "SELECT * FROM " + SqliteDBStructure.DATA_AGGREGATE;
+    public static final String GET_DATA_ANALYZING = "SELECT * FROM " + SqliteDBStructure.DATA_ANALYZING;
+
+    // private constructor. DB is initialiazed through a factory method
+    private SqliteDBHelper(Context context, String name, SQLiteDatabase.CursorFactory factory, int version) {
+        super(context, name, factory, version);
+        this.context = context;
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase sqLiteDatabase) {
+        // tables for the raw data
+        sqLiteDatabase.execSQL(SqliteDBStructure.CREATE_DATA_AGGREGATE);
+        sqLiteDatabase.execSQL(SqliteDBStructure.CREATE_APPS_LOGGED_AT_SCAN_TIME);
+        // tables for the datamining
+        sqLiteDatabase.execSQL(SqliteDBStructure.CREATE_DATA_ANALYZING);
+        sqLiteDatabase.execSQL(SqliteDBStructure.CREATE_SCAN_TIMES_LOGGED);
+        sqLiteDatabase.execSQL(SqliteDBStructure.CREATE_SCANNED_APPS);
+        // tables for saving scans which could not be evaluated
+        sqLiteDatabase.execSQL(SqliteDBStructure.CREATE_SAVE_SCAN);
+        sqLiteDatabase.execSQL(SqliteDBStructure.CREATE_SAVE_ANOMALIES);
+        // for the images from the play store
+        sqLiteDatabase.execSQL(SqliteDBStructure.CREATE_PLAY_STORE_APP_INFOS);
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase sqLiteDatabase, int oldVersion, int newVersion) {
+        if (oldVersion != newVersion) {
+            sqLiteDatabase.execSQL("DROP TABLE IF EXISTS " + SqliteDBStructure.DATA_AGGREGATE);
+            sqLiteDatabase.execSQL("DROP TABLE IF EXISTS " + SqliteDBStructure.APPS_LOGGED_AT_SCAN_TIME);
+
+            sqLiteDatabase.execSQL("DROP TABLE IF EXISTS " + SqliteDBStructure.DATA_ANALYZING);
+            sqLiteDatabase.execSQL("DROP TABLE IF EXISTS " + SqliteDBStructure.SCAN_TIMES_LOGGED);
+            sqLiteDatabase.execSQL("DROP TABLE IF EXISTS " + SqliteDBStructure.SCANNED_APPS);
+
+            sqLiteDatabase.execSQL("DROP TABLE IF EXISTS " + SqliteDBStructure.SAVE_SCAN);
+            sqLiteDatabase.execSQL("DROP TABLE IF EXISTS " + SqliteDBStructure.SAVE_ANOMALIES);
+
+            sqLiteDatabase.execSQL("DROP TABLE IF EXISTS " + SqliteDBStructure.PLAY_STORE_APP_INFOS);
+
+            onCreate(sqLiteDatabase);
+        }
+    }
+
+    // factory method, which initializes this class
+    public static synchronized SqliteDBHelper getInstance(Context ctx) {
+        // only one instance of this class can exists
+        if (sqliteDBHelper_instance == null) {
+            sqliteDBHelper_instance = new SqliteDBHelper(ctx, SqliteDBStructure.DATABASE_NAME, null, VERSION);
+        }
+        return sqliteDBHelper_instance;
+    }
+
+    // insert data into the DB
+    public void insertIntoDataAggregate(String packageName, String permission, Date accessTime, int appState, int screenState, float screenOrientation, int closeToObject) {
+        // Gets the data repository in write mode
+        SQLiteDatabase db = this.getWritableDatabase();
+        // Create a new map of values, where column names are the keys
+        ContentValues contentValues = new ContentValues();
+
+        contentValues.put(SqliteDBStructure.PACKAGE_NAME, packageName);
+        contentValues.put(SqliteDBStructure.PERMISSION, permission);
+        contentValues.put(SqliteDBStructure.ACCESS_TIME, Utility.standardDateTime(accessTime));
+        contentValues.put(SqliteDBStructure.APP_STATE, appState);
+        contentValues.put(SqliteDBStructure.SCREEN_STATE, screenState);
+        contentValues.put(SqliteDBStructure.SCREEN_ORIENTATION, screenOrientation);
+        contentValues.put(SqliteDBStructure.CLOSE_TO_OBJECT, closeToObject);
+
+        db.beginTransaction();
+        try {
+            db.insertWithOnConflict(SqliteDBStructure.DATA_AGGREGATE, null, contentValues, SQLiteDatabase.CONFLICT_REPLACE);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public void insertIntoAppsLoggedAtScanTime(String packageName) {
+        // Gets the data repository in write mode
+        SQLiteDatabase db = this.getWritableDatabase();
+        // Create a new map of values, where column names are the keys
+        ContentValues contentValues = new ContentValues();
+
+        contentValues.put(SqliteDBStructure.PACKAGE_NAME, packageName);
+
+        db.beginTransaction();
+        try {
+            db.insertWithOnConflict(SqliteDBStructure.APPS_LOGGED_AT_SCAN_TIME, null, contentValues, SQLiteDatabase.CONFLICT_REPLACE);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public void insertIntoDataAnalyzing (String packageName, String permission, int count, String anomaly, String scanTime, String anomalyReason, String resourceAccessTime, int reported) {
+        // Gets the data repository in write mode
+        SQLiteDatabase db = this.getWritableDatabase();
+        // Create a new map of values, where column names are the keys
+        ContentValues contentValues = new ContentValues();
+
+        contentValues.put(SqliteDBStructure.PACKAGE_NAME, packageName);
+        contentValues.put(SqliteDBStructure.PERMISSION, permission);
+        contentValues.put(SqliteDBStructure.ACCESS_TIME, resourceAccessTime);
+        contentValues.put(SqliteDBStructure.COUNT, count);
+        contentValues.put(SqliteDBStructure.IS_ANOMALOUS, anomaly);
+        contentValues.put(SqliteDBStructure.ANOMALY_REASON, anomalyReason);
+        contentValues.put(SqliteDBStructure.SCAN_TIME, scanTime);
+        contentValues.put(SqliteDBStructure.REPORTED, reported);
+
+        db.beginTransaction();
+        try {
+            //db.insert(SqliteDBStructure.DATA_ANALYZING, null, contentValues);
+            db.insertWithOnConflict(SqliteDBStructure.DATA_ANALYZING, null, contentValues, SQLiteDatabase.CONFLICT_REPLACE);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public void insertIntoScanTimesLogged(Date scanTime) {
+        // Gets the data repository in write mode
+        SQLiteDatabase db = this.getWritableDatabase();
+        // Create a new map of values, where column names are the keys
+        ContentValues contentValues = new ContentValues();
+
+        contentValues.put(SqliteDBStructure.SCAN_TIME, Utility.standardDateTime(scanTime));
+
+        db.beginTransaction();
+        try {
+            db.insertWithOnConflict(SqliteDBStructure.SCAN_TIMES_LOGGED, null, contentValues, SQLiteDatabase.CONFLICT_REPLACE);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public void insertIntoScannedApps(String packageName, String scanTime) {
+        // Gets the data repository in write mode
+        SQLiteDatabase db = this.getWritableDatabase();
+        // Create a new map of values, where column names are the keys
+        ContentValues contentValues = new ContentValues();
+
+        contentValues.put(SqliteDBStructure.PACKAGE_NAME, packageName);
+        contentValues.put(SqliteDBStructure.SCAN_TIME, scanTime);
+
+        db.beginTransaction();
+        try {
+            db.insertWithOnConflict(SqliteDBStructure.SCANNED_APPS, null, contentValues, SQLiteDatabase.CONFLICT_REPLACE);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public Cursor get_data(String query) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(query, null);
+        return cursor;
+    }
+
+    // get all the content from data_aggregate
+    public Cursor get_data_from_data_aggregate() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(GET_DATA_AGGREGATE, null);
+        return cursor;
+    }
+
+    // get all the content from data_analyzing
+    public Cursor get_data_from_data_analyzing() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(GET_DATA_ANALYZING, null);
+        return cursor;
+    }
+
+    // get the amount of rows in the DB specified by a sql query
+    public int entries(String query) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(query, null);
+
+        if (cursor != null) {
+            return cursor.getCount();
+        } else {
+            return 0;
+        }
+    }
+
+    //Execute a single SQL statement that is NOT a SELECT or any other SQL statement that returns data.
+    public void query(String query) {
+        // Gets the data repository in write mode
+        SQLiteDatabase db = this.getWritableDatabase();
+        // insert into database
+        db.beginTransaction();
+        db.execSQL(query);
+        db.setTransactionSuccessful();
+        db.endTransaction();
+    }
+
+    // Runs the provided SQL and returns a string over the result set:
+    public String query_select_string(String query) {
+        // Gets the data repository in read mode
+        SQLiteDatabase db = this.getReadableDatabase();
+        // select from database
+        db.beginTransaction();
+        Cursor cursor = db.rawQuery(query, null);
+        db.setTransactionSuccessful();
+        db.endTransaction();
+
+        if (cursor != null)
+            return cursorToString(cursor);
+        else
+            try {
+                throw new SQLException();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        return null;
+    }
+
+    private String cursorToString(Cursor cursor) {
+        String result = new String();
+
+        if (cursor != null) {
+            cursor.moveToFirst();
+        }
+        while (!cursor.isAfterLast()) {
+            if (cursor.isLast())
+                result += cursor.getString(0);
+            else
+                result += cursor.getString(0) + ", ";
+            cursor.moveToNext();
+        }
+        return result;
+    }
+
+    // Runs the provided SQL and returns an array list:
+    // DO NOT CALL THIS METHOD, IF YOU MAKE A SELECT ON MULTIPLE COLUMNS
+    public ArrayList query_select_list(String query) {
+        // Gets the data repository in read mode
+        SQLiteDatabase db = this.getReadableDatabase();
+        // select from database
+        db.beginTransaction();
+        Cursor cursor = db.rawQuery(query, null);
+        db.setTransactionSuccessful();
+        db.endTransaction();
+
+        if (cursor != null)
+            return cursorToList(cursor);
+        else
+            try {
+                throw new SQLException();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        return null;
+    }
+
+    private ArrayList cursorToList(Cursor cursor) {
+        ArrayList result = new ArrayList();
+
+        if (cursor != null) {
+            cursor.moveToFirst();
+        }
+        while (!cursor.isAfterLast()) {
+            result.add(cursor.getString(0));
+            cursor.moveToNext();
+        }
+
+        return result;
+    }
+
+    public void deleteRawDataTables () {
+        query("DELETE FROM " + SqliteDBStructure.DATA_AGGREGATE);
+        query("DELETE FROM " + SqliteDBStructure.APPS_LOGGED_AT_SCAN_TIME);
+    }
+
+    public void deleteOlderScans () {
+        if (ScanSettings.indexScanDeletion != 3) {
+            Date date = new Date((System.currentTimeMillis() - (ScanSettings.scanDeletionInMS[ScanSettings.indexScanDeletion] /** 1000L * 60 * 60 * 24*/)));
+            query("DELETE FROM " + SqliteDBStructure.DATA_ANALYZING + " WHERE " + SqliteDBStructure.SCAN_TIME + " <= " + "DATETIME(" + "'" + Utility.standardDateTime(date) + "'" + ")");
+            query("DELETE FROM " + SqliteDBStructure.SCAN_TIMES_LOGGED + " WHERE " + SqliteDBStructure.SCAN_TIME + " <= " + "DATETIME(" + "'" + Utility.standardDateTime(date) + "'" + ")");
+        }
+    }
+}

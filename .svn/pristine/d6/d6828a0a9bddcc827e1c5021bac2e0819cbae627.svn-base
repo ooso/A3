@@ -1,0 +1,124 @@
+package com.op_dfat;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.drawable.Drawable;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.Filter;
+import android.widget.Filterable;
+import android.widget.ImageView;
+import android.widget.TextView;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import static android.content.ContentValues.TAG;
+import static android.graphics.Color.RED;
+
+public class Adapter_Apps extends ArrayAdapter<Apps> implements Filterable {
+
+    Context context;
+    private int layoutResourceId;
+    private List<Apps> data;
+    private List<Apps> filtered = new ArrayList<>();
+    String timestamp;
+
+    FilterNames filter;
+
+    public Adapter_Apps(Context context, int layoutResourceId, Apps[] data){
+        super(context, layoutResourceId, data);
+        this.context = context;
+        this.layoutResourceId = layoutResourceId;
+        this.data = Arrays.asList(data);
+        filtered = Arrays.asList(data);
+    }
+
+    @Override
+    public View getView(int position, View convertView, ViewGroup parent) {
+
+        LayoutInflater inflater = (LayoutInflater) context
+                .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        View rowView = inflater.inflate(R.layout.adapter_apps, parent, false);
+        ImageView ivIcon = (ImageView) rowView.findViewById(R.id.appIcon);
+        TextView tvName = (TextView) rowView.findViewById(R.id.appName);
+        TextView tvCount = (TextView) rowView.findViewById(R.id.appCount);
+        TextView tvResource= (TextView) rowView.findViewById(R.id.appResource);
+        ImageView ivAnomalyIcon = (ImageView) rowView.findViewById(R.id.appAnomalyIcon);
+        Drawable anomalyIcon = getContext().getDrawable(R.drawable.anomalyicon);
+
+        Apps app = getItem(position);
+        // change the icon, appName, resource count and resource name
+        timestamp = app.timestamp;
+        ivIcon.setImageDrawable(app.icon);
+        tvName.setText(app.appName);
+        tvCount.setText(app.count + "x");
+        tvResource.setText(app.resource);
+
+        // sets a warning icon when a anomaly is thrown for the app
+        if(app.anomalyFound == 1){
+            tvName.setTextColor(RED);
+            ivAnomalyIcon.setImageDrawable(anomalyIcon);
+        }
+        return rowView;
+    }
+
+    @Override
+    public int getCount() {
+        return filtered.size();
+    }
+
+    @Nullable
+    @Override
+    public Apps getItem(int position) {
+        return filtered.get(position);
+    }
+
+
+    @NonNull
+    @Override
+    public Filter getFilter() {
+        if (filter == null) {
+            filter = new FilterNames();
+        }
+        return filter;
+    }
+
+    private class FilterNames extends Filter {
+
+        @Override
+        protected FilterResults performFiltering(CharSequence charSequence) {
+
+            FilterResults results = new FilterResults();
+
+            if (charSequence != null && charSequence.length() != 0) {
+                List<Apps> resultList = new ArrayList<>();
+                for (Apps app: data) {
+                    if (app.appName.toLowerCase().contains(charSequence.toString().toLowerCase())) {
+                        resultList.add(app);
+                    }
+                }
+
+                results.count = resultList.size();
+                results.values = resultList;
+            } else {
+                results.count = data.size();
+                results.values = data;
+            }
+            return results;
+        }
+
+        @Override
+        protected void publishResults(CharSequence charSequence, FilterResults filterResults) {
+            filtered = (List<Apps>) filterResults.values;
+
+            notifyDataSetChanged();
+        }
+    }
+}

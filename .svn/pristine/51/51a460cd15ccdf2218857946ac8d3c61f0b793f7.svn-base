@@ -1,0 +1,395 @@
+package com.op_dfat;
+
+import android.app.ProgressDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.database.Cursor;
+import android.graphics.drawable.Drawable;
+import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Bundle;
+import android.support.v7.app.AlertDialog;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.SearchView;
+import android.text.Html;
+import android.text.InputType;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.WindowManager;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ExpandableListView;
+import android.widget.Filter;
+import android.widget.ListView;
+import android.widget.TextView;
+import android.widget.Toast;
+import android.widget.ViewSwitcher;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class Activity_apps extends AppCompatActivity {
+
+    private SearchView sv;
+    private Filter filter;
+    private ExpandableListView expandableListView;
+
+    private ViewSwitcher viewSwitcher;
+    private ListView listView;
+    private EditText reportReason;
+    private Button reportButton, cancelReport;
+    private TextView detailedResultTitle, reportExplanationText;
+
+    private SqliteDBHelper sqliteDBHelper;
+    private ProgressDialog progressDialog;
+    private ReportView reportView;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_apps);
+
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN);
+
+        sv = (SearchView) findViewById(R.id.searchViewApps);
+        expandableListView = (ExpandableListView) findViewById(R.id.listViewApps);
+        sqliteDBHelper = SqliteDBHelper.getInstance(this);
+        viewSwitcher = (ViewSwitcher) findViewById(R.id.ViewSwitcher);
+        listView = (ListView) findViewById(R.id.listViewDetail);
+        reportReason = (EditText) findViewById(R.id.reportText);
+        reportButton = (Button) findViewById(R.id.sendReport);
+        detailedResultTitle = (TextView) findViewById(R.id.detailtedResultTitle);
+        reportExplanationText = (TextView) findViewById(R.id.reportExplanation);
+
+        reportView = new ReportView(viewSwitcher, listView, detailedResultTitle, reportExplanationText, reportButton, reportReason);
+
+        cancelReport = (Button) findViewById(R.id.cancelReport);
+        cancelReport.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                for (int i = 0; i < expandableListView.getCount(); i++) {
+                    expandableListView.collapseGroup(i);
+                }
+                viewSwitcher.showPrevious();
+
+            }
+        });
+
+        Intent intent = getIntent();
+        String scanTime = intent.getStringExtra(MyService.STOP_SCAN_TIME_STRING);
+
+        createList(scanTime);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_options, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_settings) {
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void createList(final String scanTime) {
+
+        new AsyncTask<Void, Void, List<AppInfo>>() {
+
+            @Override
+            protected void onPreExecute() {
+
+                if (!Activity_apps.this.isFinishing())
+                    progressDialog = ProgressDialog.show(Activity_apps.this, "LOADING", "Loading scan result...");
+            }
+
+            @Override
+            protected List<AppInfo> doInBackground(Void... voids) {
+                // get all the package names that were logged at the given time stamp
+                ArrayList<String> apps = getPackageNames(scanTime);
+                if (apps == null || apps.isEmpty()) {
+                    return new ArrayList<>();
+                }
+                // create an array of app objects, which holds all the necessary information about all the found apps
+                final List<AppInfo> appList = new ArrayList<>();
+
+                for (String packageName: apps) {
+                    Drawable icon = Utility.getAppIcon(getApplicationContext(), packageName);
+                    String appName = Utility.packageToAppName(getApplicationContext(), packageName);
+                    List<PermissionInfo> permissionInfos = getAnomalyInfos(packageName, scanTime);
+
+                    int anomalyFound = anomalyFound(packageName, scanTime)?1:0;
+                    int permissionsUsed = getPermissionsUsed(packageName, scanTime);
+
+                    AppInfo appInfo = new AppInfo(packageName, appName, icon, anomalyFound, permissionsUsed, permissionInfos);
+
+                    if (!appList.contains(appInfo)) {
+                        appList.add(appInfo);
+                    }
+                }
+
+                Collections.sort(appList, AppInfo.AppComparator.decending(AppInfo.AppComparator.getComparator(AppInfo.AppComparator.SORT_BY_ANOMALY, AppInfo.AppComparator.SORT_BY_NAME)));
+
+                return appList;
+            }
+
+            @Override
+            protected void onPostExecute(final List<AppInfo> appsList) {
+
+                final ExpandableAdapter adapter = new ExpandableAdapter(getApplicationContext(), appsList, reportView);
+                expandableListView.setAdapter(adapter);
+
+                adapter.notifyDataSetChanged();
+
+                // disables the default TextFilter
+                expandableListView.setTextFilterEnabled(false);
+                // gets filter for the adapter
+                filter = adapter.getFilter();
+                // sets up the searchView
+                setupSearchView();
+
+                expandableListView.setOnGroupClickListener(new ExpandableListView.OnGroupClickListener() {
+                    @Override
+                    public boolean onGroupClick(ExpandableListView expandableListView, View view, int i, long l) {
+
+                        Button button = (Button) view.findViewById(R.id.reportButton);
+                        button.setVisibility(button.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE);
+
+                        return false;
+                    }
+                });
+
+                expandableListView.setOnChildClickListener(new ExpandableListView.OnChildClickListener() {
+                    @Override
+                    public boolean onChildClick(final ExpandableListView expandableListView, View view, final int i, int i1, long l) {
+
+                        detailedResultTitle.setText(R.string.anomalousResourceDialogTitle);
+                        reportExplanationText.setText(R.string.anomalousResourceDeReportText);
+                        reportButton.setText(R.string.buttonDeReport);
+
+                        boolean anomalous = false;
+
+                        final AppInfo appInfo = appsList.get(i);
+                        final PermissionInfo permissionInfo = appInfo.permissionInfos.get(i1);
+                        List<AnomalyInfo> anomalyInfos  = permissionInfo.anomalyInfos;
+
+                        for (AnomalyInfo anomalyInfo: anomalyInfos) {
+                            if (anomalyInfo.isAnomalous.equals("1")) {
+                                anomalous = true;
+                                break;
+                            }
+                        }
+
+                        if (anomalous) {
+
+                            List<String> result = new ArrayList<>();
+
+                            for (AnomalyInfo anomalyInfo: anomalyInfos) {
+                                result.add(permissionInfo.permission + "\n" + anomalyInfo.accessTime.substring(11) + " \n" + anomalyInfo.anomalyReason);
+                            }
+
+                            ArrayAdapter<String> adapter = new ArrayAdapter<>(getApplicationContext(), android.R.layout.simple_list_item_1, result);
+                            listView.setAdapter(adapter);
+
+                            reportButton.setOnClickListener(new View.OnClickListener() {
+                                @Override
+                                public void onClick(View view) {
+                                    String reasonForDeReporting = reportReason.getText().toString();
+                                    dereportApp(appInfo.appName, permissionInfo.permission, reasonForDeReporting);
+                                    setAsDereported(appInfo.packageName, permissionInfo.permission, scanTime);
+                                    expandableListView.collapseGroup(i);
+                                    createList(scanTime);
+                                    reportReason.setText("");
+                                    viewSwitcher.showPrevious();
+                                }
+                            });
+                            viewSwitcher.showNext();
+
+                        }
+                        return false;
+                    }
+                });
+
+                progressDialog.dismiss();
+            }
+
+        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+    }
+
+    //Return aller Paket Namen, die zum Analysezeitpunt "scanTime" in der DB stehen
+    private ArrayList<String> getPackageNames(String scanTime){
+        return sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.PACKAGE_NAME +
+                " FROM " + SqliteDBStructure.SCANNED_APPS +
+                " WHERE " + SqliteDBStructure.SCAN_TIME + " = '" + scanTime + "'");
+    }
+
+    private int getPermissionsUsed (String packageName, String scanTime) {
+        return sqliteDBHelper.entries("SELECT * FROM " + SqliteDBStructure.DATA_ANALYZING +
+                " WHERE " + SqliteDBStructure.SCAN_TIME + " = '" + scanTime + "' AND " + SqliteDBStructure.PACKAGE_NAME + " = '" + packageName + "'" +
+                " GROUP BY " + SqliteDBStructure.PERMISSION);
+    }
+
+
+    private boolean anomalyFound(String packageName, String scanTime) {
+        ArrayList<String> tmp = sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.IS_ANOMALOUS +
+                " FROM " + SqliteDBStructure.DATA_ANALYZING +
+                " WHERE " + SqliteDBStructure.SCAN_TIME + " = '" + scanTime + "' AND " + SqliteDBStructure.PACKAGE_NAME + " = '" + packageName + "'");
+        return tmp.contains("1");
+    }
+
+    private List<PermissionInfo> getAnomalyInfos(String packageName, String scanTime) {
+        Cursor cursor = sqliteDBHelper.get_data("SELECT " + SqliteDBStructure.PERMISSION + ", " + SqliteDBStructure.COUNT +
+                " FROM " + SqliteDBStructure.DATA_ANALYZING +
+                " WHERE " + SqliteDBStructure.SCAN_TIME + " = '" + scanTime + "' AND " + SqliteDBStructure.PACKAGE_NAME + " = '" + packageName + "'" +
+                " GROUP BY " + SqliteDBStructure.PERMISSION +
+                " ORDER BY " + SqliteDBStructure.COUNT + " DESC");
+
+        ArrayList<PermissionInfo> tmp = new ArrayList<>();
+
+        if (cursor != null) {
+            cursor.moveToFirst();
+        } else {
+            tmp.add(new PermissionInfo("Error:No Permissions", "Error:0", null));
+            return tmp;
+        }
+
+        while (!cursor.isAfterLast()) {
+
+            String permission = cursor.getString(cursor.getColumnIndexOrThrow(SqliteDBStructure.PERMISSION));
+            String count = cursor.getString(cursor.getColumnIndexOrThrow(SqliteDBStructure.COUNT));
+
+            Cursor cursor1 = sqliteDBHelper.get_data("SELECT " + SqliteDBStructure.IS_ANOMALOUS + ", " + SqliteDBStructure.ANOMALY_REASON + ", " + SqliteDBStructure.ACCESS_TIME +
+                                                " FROM " + SqliteDBStructure.DATA_ANALYZING +
+                                                " WHERE " + SqliteDBStructure.SCAN_TIME + " = '" + scanTime + "' AND " + SqliteDBStructure.PACKAGE_NAME + " = '" + packageName + "' AND " + SqliteDBStructure.PERMISSION  + " = '" + permission + "'");
+            if (cursor1 != null) {
+                cursor1.moveToFirst();
+            }
+
+            List<AnomalyInfo> anomalyInfos = new ArrayList<>();
+
+            while (!cursor1.isAfterLast()) {
+                String isAnomalous = cursor1.getString(cursor1.getColumnIndexOrThrow(SqliteDBStructure.IS_ANOMALOUS));
+                String anomalyReason = cursor1.getString(cursor1.getColumnIndexOrThrow(SqliteDBStructure.ANOMALY_REASON));
+                String accessTime = cursor1.getString(cursor1.getColumnIndexOrThrow(SqliteDBStructure.ACCESS_TIME));
+
+                anomalyInfos.add(new AnomalyInfo(isAnomalous, anomalyReason, accessTime));
+
+                cursor1.moveToNext();
+            }
+
+
+            tmp.add(new PermissionInfo(permission, count, anomalyInfos));
+
+            cursor.moveToNext();
+        }
+
+        return tmp;
+    }
+
+    private void setAsDereported(String packageName, String permission, String scanTime) {
+        sqliteDBHelper.query("UPDATE " + SqliteDBStructure.DATA_ANALYZING + " SET " + SqliteDBStructure.IS_ANOMALOUS + " = '0' " +
+                             "WHERE " + SqliteDBStructure.PACKAGE_NAME + " = '" + packageName + "' AND " + SqliteDBStructure.PERMISSION + " = '" + permission + "' AND " + SqliteDBStructure.SCAN_TIME + " = '" + scanTime + "'");
+    }
+
+    private void dereportApp(String packageName, String permission, String reason){
+        MyClient.POST_Anomaly(packageName, permission, reason, "-1");
+    }
+
+    // Sets up the SearchView
+    private void setupSearchView(){
+        sv.clearFocus();
+        sv.setIconifiedByDefault(false);
+        sv.setOnQueryTextListener(
+                new android.support.v7.widget.SearchView.OnQueryTextListener(){
+
+                    @Override
+                    public boolean onQueryTextSubmit(String query) {
+
+                        return false;
+                    }
+
+                    @Override
+                    public boolean onQueryTextChange(String newText) {
+                        filter.filter(newText);
+                        return true;
+                    }
+                }
+        );
+        sv.setSubmitButtonEnabled(false);
+        sv.setQueryHint("Search Here");
+    }
+
+    public void getAppsToScan(MenuItem item){
+        Intent intent = new Intent(getApplicationContext(), Activity_Apps_to_scan.class);
+        startActivity(intent);
+    }
+
+    public void settingsButton(MenuItem item) {
+        Intent intent = new Intent(getApplicationContext(), SettingsPage.class);
+        startActivity(intent);
+    }
+
+    public void getHelp(MenuItem item){
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+
+        builder.setTitle("Hilfe");
+        android.content.res.Resources res = getResources();
+
+        String text = String.format(res.getString(R.string.HelpText));
+
+        if(Build.VERSION.SDK_INT >= 24){
+
+            builder.setMessage(Html.fromHtml((text), Html.FROM_HTML_MODE_LEGACY)).show();//for 24 API and More
+        }
+    }
+
+    public void getAboutUs(MenuItem item){
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+
+        builder.setTitle("Impressum");
+        android.content.res.Resources res = getResources();
+
+        String text = String.format(res.getString(R.string.ImpressumText));
+
+        if(Build.VERSION.SDK_INT >= 24){
+
+            builder.setMessage(Html.fromHtml((text), Html.FROM_HTML_MODE_LEGACY)).show();//for 24 API and More
+        }
+    }
+
+    public class ReportView {
+        ViewSwitcher viewSwitcher;
+        ListView listView;
+        TextView reportTitle, reportExplanationText;
+        Button reportButton;
+        EditText reportReason;
+
+        public ReportView(ViewSwitcher viewSwitcher, ListView listView, TextView reportTitle, TextView reportExplanationText, Button reportButton, EditText reportReason) {
+            this.reportButton = reportButton;
+            this.reportExplanationText = reportExplanationText;
+            this.reportTitle = reportTitle;
+            this.viewSwitcher = viewSwitcher;
+            this.listView = listView;
+            this.reportReason = reportReason;
+        }
+    }
+}

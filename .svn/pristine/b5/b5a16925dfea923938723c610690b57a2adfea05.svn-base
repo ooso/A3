@@ -1,0 +1,93 @@
+package com.dfat.fakerinc.guidummy;
+
+import java.lang.reflect.InvocationTargetException;
+import android.app.AppOpsManager;
+import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
+
+import java.util.Date;
+import java.util.List;
+
+/**
+ * Created by cantw on 15.11.2016.
+ */
+
+
+
+public class RD_Test extends AppCompatActivity {
+    private static final Class<?> INT_ARRAY_TYPE = new int[0].getClass();
+
+    /*
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.layout_rd);
+
+        for (int i = 0; i < 10; i++) {
+            Log.d("RDTEST", "ALIVE");
+        }
+
+        try
+        {
+            int [] allOps = getAllOps();
+            AppOpsManager aom = (AppOpsManager) getSystemService (APP_OPS_SERVICE);
+            Class<? extends AppOpsManager> clsAom = aom.getClass ();
+            List<?> packageOpsList = (List<?>)
+                    clsAom.getMethod ("getPackagesForOps", INT_ARRAY_TYPE)
+                            .invoke (aom, allOps);  // if anything goes wrong, an exception is thrown
+
+            for (Object packageOps : packageOpsList)
+            {
+                Class<?> clsPackageOps = packageOps.getClass ();
+                Log.d("RDTEST", packageOps.toString());
+                String packageName = (String)clsPackageOps.getMethod ("getPackageName").invoke (packageOps);
+                List<?> opEntryList = (List<?>)clsPackageOps.getMethod ("getOps").invoke (packageOps);
+                Log.i ("RDTEST", "Package " + packageName + " has " + opEntryList.size () + " op entries");
+
+                for (Object oe : opEntryList)
+                {
+                    Class<?> clsOpEntry = oe.getClass ();
+                    int oeOpid = (int) clsOpEntry.getMethod ("getOp").invoke (oe);
+
+                    Date time = new Date ((long) clsOpEntry.getMethod ("getTime").invoke (oe));
+                    Log.i ("RDTEST", "OPIDs: "+ oeOpid + " Last used at: " + time);
+                }
+
+            }
+
+
+        }
+        catch (InvocationTargetException|NoSuchMethodException e)
+        {
+            Log.e ("RDTEST", "well fuck: " + e);
+        }
+        catch (Exception e){
+            Log.e ("RDTEST", "well fuck: " + e);
+        }
+
+        for (int i = 0; i < 10; i++) {
+            Log.d("RDTEST", "DEAD");
+        }
+    }
+
+    private int [] getAllOps ()
+    {
+        // first count how many operations we need
+        int count = 0;
+        for (Permission p : Permission.values ())
+            count += p.getOpids ().length;
+        // next get the op codes
+        int [] result = new int[count];
+        int i = 0;
+        for (Permission p : Permission.values ())
+        {
+            int [] ops = p.getOpids ();
+            System.arraycopy (ops, 0, result, i, ops.length);
+            i += ops.length;
+        }
+        return result;
+    }*/
+}
+

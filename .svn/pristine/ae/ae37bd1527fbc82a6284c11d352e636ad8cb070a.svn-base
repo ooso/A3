@@ -1,0 +1,272 @@
+package com.op_dfat;
+
+import android.app.Service;
+import android.content.Context;
+import android.content.Intent;
+import android.os.AsyncTask;
+import android.os.Binder;
+import android.os.IBinder;
+import android.os.PowerManager;
+import android.support.v4.content.LocalBroadcastManager;
+import android.text.LoginFilter;
+import android.util.Log;
+
+import java.util.Date;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+public class MyService extends Service {
+    // binder that is given to the clients, who wish to bind to this service
+    private final IBinder mBinder = new LocalBinder();
+
+    // stores the start time of the most recent scan
+    public static long start_scan_time_ms;
+    // stores the stop time of the most recent scan
+    private long stop_scan_time_ms;
+    // tags
+    public static final String SERVICE_WAKELOCK = "com.op_dfat.MyService.ServiceWakelock";
+    public static final String START_SCAN = "com.op_dfat.MyService.StartScan";
+    public static final String STOP_SCAN = "com.op_dfat.MyService.StopScan";
+
+    // scheduled thread pool executor, which handles tasks and threads
+    private ScheduledThreadPoolExecutor scheduledThreadPoolExecutor = null;
+    // futures, which store information about the scheduled tasks
+    ScheduledFuture<?> scan_future, check_motion_future;
+    ScheduledFuture<Boolean> data_mining_future;
+
+    // variable, which checks whether we are currently analyzing
+    public boolean analyzing = false;
+
+    // references the all the necessary instances
+    private PermissionLogReader permissionLogReader;
+    private MotionSensors motionSensors;
+    private Datamining datamining;
+    private Evaluation evaluation;
+
+    // references for the wakelock
+    private PowerManager powerManager;
+    private PowerManager.WakeLock wakeLock;
+
+    public class LocalBinder extends Binder
+    {
+        MyService getService() {
+            // Return this instance of LocalService so clients can call public methods
+            return MyService.this;
+        }
+    }
+
+    private Runnable logReader = new Runnable()
+    {
+        @Override
+        public void run() {
+            try {
+                // read the permission log
+                permissionLogReader.readPermissionLog(start_scan_time_ms);
+            } catch (RuntimeException e) {
+                e.printStackTrace();
+            }
+        }
+    };
+
+    private Runnable check_motion_future_sensors = new Runnable() {
+        @Override
+        public void run() {
+            // start the motion sensor and register the class
+            motionSensors.startCheckingSensors(getApplicationContext());
+            motionSensors.registerReceiver(getApplicationContext());
+        }
+    };
+
+    private Runnable stop_check_motion_future = new Runnable() {
+        @Override
+        public void run() {
+            // stop the motion senor tracking and unregister the class
+            motionSensors.stopCheckingMotionSensors();
+            motionSensors.unregisterReceiver(getApplicationContext());
+        }
+    };
+
+    private Callable<Boolean> start_data_mining = new Callable<Boolean>() {
+        @Override
+        public Boolean call() throws Exception {
+            datamining.startAnalysis(start_scan_time_ms, stop_scan_time_ms);
+            return true;
+        }
+    };
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return mBinder;
+    }
+
+    @Override
+    public void onCreate ()
+    {
+        super.onCreate ();
+        // get references to all necessary instances
+        permissionLogReader = PermissionLogReader.getInstance(getApplicationContext());
+        motionSensors = MotionSensors.getInstance(getApplicationContext());
+        datamining = Datamining.getInstance(getApplicationContext());
+        evaluation = Evaluation.getInstance(getApplicationContext());
+
+        // get a reference to the power manager
+        powerManager = (PowerManager)getSystemService(Context.POWER_SERVICE);
+
+        // instantiate the thread pool executor, which handles the threads
+        if (scheduledThreadPoolExecutor == null)
+            scheduledThreadPoolExecutor = new ScheduledThreadPoolExecutor(10);
+        // set policies on task termination
+        scheduledThreadPoolExecutor.setRemoveOnCancelPolicy(true);
+        scheduledThreadPoolExecutor.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
+
+        // setup a wakelock
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, SERVICE_WAKELOCK);
+    }
+
+    @Override
+    public void onDestroy ()
+    {
+        Log.d("MYSERVICE", "Service stopped");
+        // shutdown all the running tasks
+        shutdownRunningTasks();
+        // shutdown the thread pool executor
+        if (scheduledThreadPoolExecutor != null) {
+            scheduledThreadPoolExecutor.shutdown();
+        }
+        super.onDestroy ();
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        // when service is started, send the information whether the service is currently analyzing
+        if (intent != null) {
+            if (intent.getAction() == START_SCAN) {
+                Log.d("MYSERVICE", "Scan initialized");
+                // set the new scan start of this scan period
+                start_scan_time_ms = intent.getLongExtra("startScanTime", System.currentTimeMillis());
+                // start the anaylzing process
+                startAnalyzing();
+            } else if (intent.getAction() == STOP_SCAN) {
+                Log.d("MYSERVICE", "Scan canceled");
+                // set the stop time
+                stop_scan_time_ms = intent.getLongExtra("stopScanTime", System.currentTimeMillis());
+                // stop the analyzing process
+                stopAnalyzing();
+            }
+        }
+        // send the current analyzing state to the main activity
+        sendAnalyzingState();
+        // redeliver the latest intent, when the service has been terminated
+        return START_REDELIVER_INTENT;
+    }
+
+    public void startAnalyzing () {
+        // if we are not currently analyzing ...
+        if (!analyzing) {
+            // aquire the wakelock as soon as the scan has been started
+            if (wakeLock != null)
+                wakeLock.acquire();
+            // start all necessary tasks
+            startTasks();
+            // set the new scan state to analyzing = true
+            analyzing = true;
+        }
+    }
+
+    public void stopAnalyzing () {
+        // if we are currently analyzing ...
+        if (analyzing) {
+            // send an intent to the receiver which stops any ongoing alarm setups
+            sendCancelAlarm();
+            // ...stop all currently running tasks
+            shutdownRunningTasks();
+            // start the datamining process
+            dataMiningProcess();
+            // set the new scan state to analyzing = false
+            analyzing = false;
+            // wait until the receiver in the main activity is registered
+            waitForRegisterReceiver();
+            // release the wakelock when the scan has been stopped
+            if (wakeLock != null)
+                wakeLock.release();
+            // stop the service
+            stopSelf();
+        }
+    }
+
+    private void startTasks() {
+        // start the motion sensor
+        if (scheduledThreadPoolExecutor != null) {
+            check_motion_future = scheduledThreadPoolExecutor.schedule(check_motion_future_sensors, 0, TimeUnit.MILLISECONDS);
+        }
+        // schedule the scan task at a fixed repeat rate
+        if (scheduledThreadPoolExecutor != null) {
+            long scanInterval = SettingsPage.intervalOptions_in_seconds[SettingsPage.selectedOptionIndexInterval];
+            scan_future = scheduledThreadPoolExecutor.scheduleAtFixedRate(logReader, 0, scanInterval, TimeUnit.SECONDS);
+        }
+    }
+
+    private void shutdownRunningTasks() {
+        // cancel all currently running tasks
+        if (scan_future != null) {
+            scan_future.cancel(false);
+        }
+        if (check_motion_future != null) {
+            check_motion_future.cancel(false);
+            scheduledThreadPoolExecutor.schedule(stop_check_motion_future, 0, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    private void dataMiningProcess () {
+        try {
+            // start the datamining process in another thread
+            if (scheduledThreadPoolExecutor != null) {
+                data_mining_future = scheduledThreadPoolExecutor.schedule(start_data_mining, 0, TimeUnit.MILLISECONDS);
+            }
+            // wait until it is finished
+            data_mining_future.get();
+
+            Log.d("MYSERVICE", "Datamining finished");
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void waitForRegisterReceiver () {
+        // wait passively until the receiver in the main activity is registered
+        while (!MainActivity.registered) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        // send a braodcast to inform the main activity that the datamining has been finished
+        OnDataminingFinished();
+    }
+
+    private void OnDataminingFinished () {
+        Intent intent = new Intent();
+        intent.setAction(MainActivity.DATA_MINING_FINISHED);
+        intent.putExtra("scanStop", datamining.actTimeStamp);
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+    }
+
+    public void sendAnalyzingState () {
+        // send a broadcast about the current analysis state, which will be received by the broadcast receiver in the main activity
+        Intent intent = new Intent();
+        intent.setAction(MainActivity.ANALYZING);
+        intent.putExtra("analyzing", analyzing);
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+    }
+
+    public void sendCancelAlarm () {
+        // send a broadcast about the current analysis state, which will be received by the alarm receiver
+        Intent intent = new Intent();
+        intent.setAction(AlarmReceiver.CANCEL_ALARM);
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+    }
+}

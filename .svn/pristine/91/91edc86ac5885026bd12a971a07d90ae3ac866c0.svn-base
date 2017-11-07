@@ -1,0 +1,124 @@
+package com.op_dfat;
+
+import android.content.Context;
+import android.os.AsyncTask;
+import android.support.v7.widget.AppCompatSeekBar;
+import android.util.Log;
+import android.widget.ListView;
+import android.widget.Toast;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Created by arrigo on 2/6/17.
+ */
+
+public class BlackListReceiver implements MyClient.BlackListFetchedListener {
+
+    private static BlackListReceiver blackListReceiver = null;
+    private Context context;
+    private static boolean isFetched = false;
+    private static boolean isFetching = false;
+    private static List<Apps> blackList = new ArrayList<>();
+
+    private BlackListReceiver(Context context) {
+        this.context = context;
+    }
+
+    public static void setupBlackList (Context context) {
+        if (blackListReceiver == null) {
+            blackListReceiver = new BlackListReceiver(context);
+            MyClient.subscribe(blackListReceiver);
+        }
+        if (Utility.networking(context) && !isFetching) {
+            MyClient.fetchBlacklist();
+            setFetched(false);
+            setIsFetching(true);
+        } else {
+            Toast.makeText(context, "Black List could not be fetched!\nNo valid internet connection", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private static void loadBlackListInfo () {
+
+        new AsyncTask<Void, Void, List<Apps>>() {
+
+            @Override
+            protected List<Apps> doInBackground(Void... voids) {
+                ArrayList<ArrayList<String>> apps = MyClient.getBlacklist();
+
+                if (apps != null && !apps.isEmpty()) {
+                    String packageName;
+                    String score;
+
+                    // fills the app_data objects with packageName, appName, appIcon and the blacklistScore matching to the packageName. The rest is not necessary in this case
+                    for (int i = 0; i < apps.size(); i++) {
+
+                        packageName = apps.get(i).get(0);
+                        score = apps.get(i).get(1);
+
+                        boolean alreadyInBlackList = false;
+
+                        if (blackList != null) {
+                            for (Apps app : blackList) {
+                                if (app.packageName.equals(packageName)) {
+                                    alreadyInBlackList = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (alreadyInBlackList) {
+                            continue;
+                        }
+
+                        IconLoader.Data data = IconLoader.loadingPlayStoreData(packageName);
+                        String appName = data.appName;
+                        String icon = data.iconURL;
+
+                        blackList.add(new Apps(icon, appName, packageName, score));
+                    }
+                }
+                return blackList;
+            }
+
+            @Override
+            protected void onPostExecute(List<Apps> appsList) {
+                blackList = appsList;
+                setIsFetching(false);
+                setFetched(true);
+            }
+
+        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+
+    }
+
+    private static synchronized void setFetched(boolean value) {
+        isFetched = value;
+    }
+    private static synchronized void setIsFetching(boolean value) {
+        isFetching = value;
+    }
+
+    public static List<Apps> getBlackList() {
+        return blackList;
+    }
+
+    public static boolean isFetched() {
+        return isFetched;
+    }
+    public static boolean isFetching() {
+        return isFetching;
+    }
+
+    @Override
+    public void OnBlackListFetched() {
+        loadBlackListInfo();
+    }
+
+    @Override
+    public void OnBlackListUpdated() {
+
+    }
+}

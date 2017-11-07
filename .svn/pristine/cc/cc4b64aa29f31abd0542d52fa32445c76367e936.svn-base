@@ -1,0 +1,50 @@
+package com.dfat.fakerinc;
+
+import android.util.Log;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+
+/**
+ * Created by Marvin on 12.12.2016.
+ */
+
+public class Datamining {
+
+    ArrayList<String> pkgNames;
+    String actTimeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
+
+    public Datamining() {
+        startAnalysis();
+    }
+
+    private void startAnalysis() {
+        pkgNames = getPackageName();
+        Collections.sort(pkgNames);
+        collectResInfos(pkgNames);
+
+    }
+
+    private ArrayList<String> getPackageName() {
+        return SqliteDBHelper.getInstance(null).query_select_list("SELECT DISTINCT app_name FROM data_aggregate");
+    }
+
+    private void collectResInfos(ArrayList<String> names){
+        String resCount;
+        String insert;
+        List<String> resources;
+        for(int i = 0; i < names.size(); i++) {
+           resources = Arrays.asList(SqliteDBHelper.getInstance(null).query_select("SELECT DISTINCT opid_name FROM data_aggregate WHERE app_name = " + names.get(i)).split(","));
+           for(int j = 0; j < resources.size(); j++){
+               resCount = SqliteDBHelper.getInstance(null).query_select("SELECT count (*) FROM data_aggregate WHERE app_name = " + names.get(i) + " and opid_name = " + resources.get(j));
+               insert = "INSERT INTO data_analysis (APPNAME,RESOURCE,COUNT,ANOMALY,TIME_STAMP) VALUES("+ names.get(i) +","+ resources.get(j) +","+ Integer.parseInt(resCount) +",0 ,"+ actTimeStamp;
+               Log.d("Print inserts",insert);
+           }
+       }
+    }
+
+}

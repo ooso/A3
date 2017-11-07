@@ -1,0 +1,827 @@
+package com.op_dfat;
+
+import android.content.ContentValues;
+import android.content.Context;
+import android.content.Intent;
+import android.database.Cursor;
+import android.database.SQLException;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+import android.net.Uri;
+import android.os.Environment;
+import android.util.Log;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Locale;
+
+
+/**
+ * Created by arrigo on 11/24/16.
+ */
+
+/*public class SqliteDBHelper extends SQLiteOpenHelper {
+
+    // static reference to this instance of the class
+    private static SqliteDBHelper sqliteDBHelper_instance = null;
+    // reference to the respective activity context
+    private Context context;
+    // current version of the database (any changes to the DB -> update version number)
+    public static int VERSION = 18;
+
+    // database related variables
+    public static final String DATABASE_NAME = "DFAT.db";
+    // variables for table data_aggregate
+    public static final String DATA_AGGREGATE = "data_aggregate";
+    public static final String APPNAME = "app_name";
+    public static final String TIME_STAMP = "last_used";
+    public static final String OPID = "opid_name";
+    public static final String RUNNING = "app_state";
+    public static final String SCREEN_STATE = "screen_state";
+    public static final String SCREEN_ORIENTATION = "screen_orientation";
+    public static final String CLOSE_TO_OBJECT = "close_to_object";
+    // table data_aggregate initialization query
+    public final String INIT_QUERY_T1 = "CREATE TABLE " + DATA_AGGREGATE
+            + " (" + APPNAME + " VARCHAR(50), "
+            + OPID + " VARCHAR(50), "
+            + TIME_STAMP + " DATETIME, "
+            + RUNNING + " NUMERIC, "
+            + SCREEN_STATE + " NUMERIC, "
+            + SCREEN_ORIENTATION + " REAL, "
+            + CLOSE_TO_OBJECT + " NUMERIC, "
+            + "PRIMARY KEY (" + APPNAME + ", " + TIME_STAMP + ", " + OPID + ", " + RUNNING + ", " + SCREEN_STATE + ", " + SCREEN_ORIENTATION + ", " + CLOSE_TO_OBJECT +"));";
+
+    // variables for table data_analysis
+    public static final String DATA_ANALYZING = "data_analysis";
+    public static final String RESOURCE = "resource";
+    public static final String COUNT = "count";
+    public static final String ANOMALY = "anomaly";
+    public static final String SCAN_TIME = "scan_time";
+    public static final String ANOMALY_REASON = "anomaly_reason";
+    // table data_aggregate initialization query
+    public final String INIT_QUERY_T2 = "CREATE TABLE " + DATA_ANALYZING
+            + " (" + APPNAME + " VARCHAR(50), "
+            + RESOURCE + " VARCHAR(50), "
+            + COUNT + " NUMERIC, "
+            + ANOMALY + " VARCHAR(50), "
+            + SCAN_TIME + " VARCHAR(50), "
+            + ANOMALY_REASON + " VARCHAR(500), "
+            + "PRIMARY KEY (" + APPNAME + ", " + RESOURCE + ", " + COUNT + ", " + ANOMALY + ", " + SCAN_TIME + ", " + ANOMALY_REASON + "));";
+
+    // get all the data from data_aggregate and data_analyzing
+    public final String QUERY_T1 = "SELECT * FROM " + DATA_AGGREGATE;
+    public final String QUERY_T2 = "SELECT * FROM " + DATA_ANALYZING;
+    // queries for dropping tables
+    public final String DELETE_T1_QUERY = "DROP TABLE IF EXISTS " + DATA_AGGREGATE;
+    public final String DELETE_T2_QUERY = "DROP TABLE IF EXISTS " + DATA_ANALYZING;
+
+    // private constructor. DB is initialiazed through a factory method
+    private SqliteDBHelper(Context context, String name, SQLiteDatabase.CursorFactory factory, int version) {
+        super(context, name, factory, version);
+        this.context = context;
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase sqLiteDatabase) {
+        sqLiteDatabase.execSQL(INIT_QUERY_T1);
+        sqLiteDatabase.execSQL(INIT_QUERY_T2);
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase sqLiteDatabase, int oldVersion, int newVersion) {
+        if (oldVersion != newVersion) {
+            sqLiteDatabase.execSQL(DELETE_T1_QUERY);
+            sqLiteDatabase.execSQL(DELETE_T2_QUERY);
+            onCreate(sqLiteDatabase);
+        }
+    }
+
+    // factory method, which initializes this class
+    public static synchronized SqliteDBHelper getInstance(Context ctx) {
+        // only one instance of this class can exists
+        if (sqliteDBHelper_instance == null) {
+            sqliteDBHelper_instance = new SqliteDBHelper(ctx.getApplicationContext(), DATABASE_NAME, null, VERSION);
+        }
+        return sqliteDBHelper_instance;
+    }
+
+    // insert data into the DB
+    public void insert_into_DB(String opid, Date _timestamp, String packageName, int isRunning, int screenState, float screenOrientation, boolean closeToObject) {
+        // Gets the data repository in write mode
+        SQLiteDatabase db = this.getWritableDatabase();
+        // Create a new map of values, where column names are the keys
+        ContentValues contentValues = new ContentValues();
+
+        contentValues.put(OPID, opid);
+        contentValues.put(TIME_STAMP, Utility.dateTime(_timestamp));
+        contentValues.put(APPNAME, packageName);
+        contentValues.put(RUNNING, isRunning);
+        contentValues.put(SCREEN_STATE, screenState);
+        contentValues.put(SCREEN_ORIENTATION, screenOrientation);
+        contentValues.put(CLOSE_TO_OBJECT, closeToObject);
+
+        db.beginTransaction();
+        try {
+            db.insertWithOnConflict(DATA_AGGREGATE, null, contentValues, SQLiteDatabase.CONFLICT_REPLACE);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public Cursor get_data(String query) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(query, null);
+        return cursor;
+    }
+
+    // get all the content from data_aggregate
+    public Cursor get_data_T1() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(QUERY_T1, null);
+        return cursor;
+    }
+
+    // get all the content from data_analyzing
+    public Cursor get_data_T2() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(QUERY_T2, null);
+        return cursor;
+    }
+
+    // get the current amount of rows in the DB
+    public int entries_T1() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(QUERY_T1, null);
+        return cursor.getCount();
+    }
+
+    // get the amount of rows in the DB specified by a sql query
+    public int entries(String query) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(query, null);
+        return cursor.getCount();
+    }
+
+    //Execute a single SQL statement that is NOT a SELECT or any other SQL statement that returns data.
+    public void query(String query) {
+        // Gets the data repository in write mode
+        SQLiteDatabase db = this.getWritableDatabase();
+        // insert into database
+        db.beginTransaction();
+        db.execSQL(query);
+        db.setTransactionSuccessful();
+        db.endTransaction();
+    }
+
+    // Runs the provided SQL and returns a string over the result set:
+    public String query_select_string(String query) {
+        // Gets the data repository in read mode
+        SQLiteDatabase db = this.getReadableDatabase();
+        // select from database
+        db.beginTransaction();
+        Cursor cursor = db.rawQuery(query, null);
+        db.setTransactionSuccessful();
+        db.endTransaction();
+
+        if (cursor != null)
+            return cursorToString(cursor);
+        else
+            try {
+                throw new SQLException();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        return null;
+    }
+
+    private String cursorToString(Cursor cursor) {
+        String result = new String();
+
+        if (cursor != null) {
+            cursor.moveToFirst();
+        }
+        while (!cursor.isAfterLast()) {
+            if (cursor.isLast())
+                result += cursor.getString(0);
+            else
+                result += cursor.getString(0) + ", ";
+            cursor.moveToNext();
+        }
+        return result;
+    }
+
+    // Runs the provided SQL and returns an array list:
+    // DO NOT CALL THIS METHOD, IF YOU MAKE A SELECT ON MULTIPLE COLUMNS
+    public ArrayList query_select_list(String query) {
+        // Gets the data repository in read mode
+        SQLiteDatabase db = this.getReadableDatabase();
+        // select from database
+        db.beginTransaction();
+        Cursor cursor = db.rawQuery(query, null);
+        db.setTransactionSuccessful();
+        db.endTransaction();
+
+        if (cursor != null)
+            return cursorToList(cursor);
+        else
+            try {
+                throw new SQLException();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        return null;
+    }
+
+    // only use when executing a query on
+    public ArrayList query_select_to_int(String query) {
+        // Gets the data repository in read mode
+        SQLiteDatabase db = this.getReadableDatabase();
+        // select from database
+        db.beginTransaction();
+        Cursor cursor = db.rawQuery(query, null);
+        db.setTransactionSuccessful();
+        db.endTransaction();
+
+        if (cursor != null)
+            return cursorToInt(cursor);
+        else
+            try {
+                throw new SQLException();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        return null;
+    }
+
+    private ArrayList cursorToInt(Cursor cursor) {
+        ArrayList result = new ArrayList();
+
+        if (cursor != null) {
+            cursor.moveToFirst();
+        }
+        while (!cursor.isAfterLast()) {
+            result.add(cursor.getInt(0));
+            cursor.moveToNext();
+        }
+
+        return result;
+    }
+
+    private ArrayList cursorToList(Cursor cursor) {
+        ArrayList result = new ArrayList();
+
+        if (cursor != null) {
+            cursor.moveToFirst();
+        }
+        while (!cursor.isAfterLast()) {
+            result.add(cursor.getString(0));
+            cursor.moveToNext();
+        }
+
+        return result;
+    }
+
+    public void reset_data_analyzing () {
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.beginTransaction();
+        db.delete(DATA_ANALYZING, null, null);
+        db.setTransactionSuccessful();
+        db.endTransaction();
+    }
+
+    public void writeDBtoFile() {
+        write_data_aggregate_to_file();
+    }
+
+    private void write_data_aggregate_to_file() {
+        JSONArray resultSet = new JSONArray();
+        String resultString = null;
+        Cursor cursor = get_data_T1();
+        cursor.moveToFirst();
+
+        while (!cursor.isAfterLast()) {
+
+            int totalColumn = cursor.getColumnCount();
+            JSONObject rowObject = new JSONObject();
+
+            for (int i = 0; i < totalColumn; i++) {
+                if (cursor.getColumnName(i) != null) {
+                    try {
+                        if (cursor.getString(i) != null) {
+                            rowObject.put(cursor.getColumnName(i), cursor.getString(i));
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            try {
+                resultSet.put(rowObject);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            cursor.moveToNext();
+        }
+        cursor.close();
+
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        JsonParser jp = new JsonParser();
+        try {
+            JsonElement je = jp.parse(resultSet.toString(4));
+            resultString = gson.toJson(je);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        try {
+            File dir = new File(Environment.getExternalStorageDirectory().getAbsolutePath());
+            if (!dir.exists())
+                dir.mkdir();
+            FileWriter file = new FileWriter(dir+ "/DFAT_aggregate.txt");
+            file.write(resultString);
+            file.flush();
+            file.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        File file= new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/DFAT_aggregate.txt");
+        Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        intent.setData(Uri.fromFile(file));
+        context.sendBroadcast(intent);
+    }
+
+    public void write_data_analyzing_to_file() {
+        JSONArray resultSet = new JSONArray();
+        String resultString = null;
+        Cursor cursor = get_data_T2();
+        cursor.moveToFirst();
+        while (!cursor.isAfterLast()) {
+
+            int totalColumn = cursor.getColumnCount();
+            JSONObject rowObject = new JSONObject();
+
+            for (int i = 0; i < totalColumn; i++) {
+                if (cursor.getColumnName(i) != null) {
+                    try {
+                        if (cursor.getString(i) != null) {
+                            rowObject.put(cursor.getColumnName(i), cursor.getString(i));
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            try {
+                resultSet.put(rowObject);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            cursor.moveToNext();
+        }
+        cursor.close();
+
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        JsonParser jp = new JsonParser();
+        try {
+            JsonElement je = jp.parse(resultSet.toString(4));
+            resultString = gson.toJson(je);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        try {
+            File dir = new File(Environment.getExternalStorageDirectory().getAbsolutePath());
+            if (!dir.exists())
+                dir.mkdir();
+            FileWriter file = new FileWriter(dir+ "/DFAT_analyzing.txt");
+            file.write(resultString);
+            file.flush();
+            file.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        File file= new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/DFAT_analyzing.txt");
+        Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        intent.setData(Uri.fromFile(file));
+        context.sendBroadcast(intent);
+    }
+}*/
+
+public class SqliteDBHelper extends SQLiteOpenHelper {
+
+    // static reference to this instance of the class
+    private static SqliteDBHelper sqliteDBHelper_instance = null;
+    // reference to the respective activity context
+    private Context context;
+    // current version of the database (any changes to the DB -> update version number)
+    public static int VERSION = 24;
+
+    // get all the data from data_aggregate and data_analyzing
+    public final String QUERY_T1 = "SELECT * FROM " + SqliteDBStructure.DATA_AGGREGATE;
+    public final String QUERY_T2 = "SELECT * FROM " + SqliteDBStructure.DATA_ANALYZING;
+
+
+    // private constructor. DB is initialiazed through a factory method
+    private SqliteDBHelper(Context context, String name, SQLiteDatabase.CursorFactory factory, int version) {
+        super(context, name, factory, version);
+        this.context = context;
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase sqLiteDatabase) {
+        sqLiteDatabase.execSQL(SqliteDBStructure.CREATE_DATA_AGGREGATE);
+        sqLiteDatabase.execSQL(SqliteDBStructure.CREATE_APPS_LOGGED);
+        sqLiteDatabase.execSQL(SqliteDBStructure.CREATE_RESOURCES_LOGGED);
+        sqLiteDatabase.execSQL(SqliteDBStructure.CREATE_APPS_USED_RESOURCES);
+        sqLiteDatabase.execSQL(SqliteDBStructure.CREATE_DATA_ANALYZING);
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase sqLiteDatabase, int oldVersion, int newVersion) {
+        if (oldVersion != newVersion) {
+            sqLiteDatabase.execSQL("DROP TABLE IF EXISTS " + SqliteDBStructure.DATA_AGGREGATE);
+            sqLiteDatabase.execSQL("DROP TABLE IF EXISTS " + SqliteDBStructure.DATA_ANALYZING);
+            sqLiteDatabase.execSQL("DROP TABLE IF EXISTS " + SqliteDBStructure.APPS_LOGGED);
+            sqLiteDatabase.execSQL("DROP TABLE IF EXISTS " + SqliteDBStructure.RESOURCES_LOGGED);
+            sqLiteDatabase.execSQL("DROP TABLE IF EXISTS " + SqliteDBStructure.APPS_USED_RESOURCES);
+
+            onCreate(sqLiteDatabase);
+        }
+    }
+
+    // factory method, which initializes this class
+    public static synchronized SqliteDBHelper getInstance(Context ctx) {
+        // only one instance of this class can exists
+        if (sqliteDBHelper_instance == null) {
+            sqliteDBHelper_instance = new SqliteDBHelper(ctx.getApplicationContext(), SqliteDBStructure.DATABASE_NAME, null, VERSION);
+        }
+        return sqliteDBHelper_instance;
+    }
+
+    // insert data into the DB
+    public void insert_into_data_aggregate(String appName, String opidName, Date _timestamp, int isRunning, int screenState, float screenOrientation, boolean closeToObject) {
+        // Gets the data repository in write mode
+        SQLiteDatabase db = this.getWritableDatabase();
+        // Create a new map of values, where column names are the keys
+        ContentValues contentValues = new ContentValues();
+
+        contentValues.put(SqliteDBStructure.APP_NAME, appName);
+        contentValues.put(SqliteDBStructure.OPID_NAME, opidName);
+        contentValues.put(SqliteDBStructure.TIME_STAMP, Utility.dateTime(_timestamp));
+        contentValues.put(SqliteDBStructure.RUNNING, isRunning);
+        contentValues.put(SqliteDBStructure.SCREEN_STATE, screenState);
+        contentValues.put(SqliteDBStructure.SCREEN_ORIENTATION, screenOrientation);
+        contentValues.put(SqliteDBStructure.CLOSE_TO_OBJECT, closeToObject);
+
+        db.beginTransaction();
+        try {
+            db.insertWithOnConflict(SqliteDBStructure.DATA_AGGREGATE, null, contentValues, SQLiteDatabase.CONFLICT_REPLACE);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public void insert_into_apps_logged (String packageName) {
+        // Gets the data repository in write mode
+        SQLiteDatabase db = this.getWritableDatabase();
+        // Create a new map of values, where column names are the keys
+        ContentValues contentValues = new ContentValues();
+
+        contentValues.put(SqliteDBStructure.APP_NAME, packageName);
+
+        db.beginTransaction();
+        try {
+            db.insertWithOnConflict(SqliteDBStructure.APPS_LOGGED, null, contentValues, SQLiteDatabase.CONFLICT_REPLACE);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public void insert_into_resource_logged (String opidName) {
+        // Gets the data repository in write mode
+        SQLiteDatabase db = this.getWritableDatabase();
+        // Create a new map of values, where column names are the keys
+        ContentValues contentValues = new ContentValues();
+
+        contentValues.put(SqliteDBStructure.OPID_NAME, opidName);
+
+        db.beginTransaction();
+        try {
+            db.insertWithOnConflict(SqliteDBStructure.RESOURCES_LOGGED, null, contentValues, SQLiteDatabase.CONFLICT_REPLACE);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public void insert_into_apps_used_resources (String appName, String opidName) {
+        // Gets the data repository in write mode
+        SQLiteDatabase db = this.getWritableDatabase();
+        // Create a new map of values, where column names are the keys
+        ContentValues contentValues = new ContentValues();
+
+        contentValues.put(SqliteDBStructure.APP_NAME, appName);
+        contentValues.put(SqliteDBStructure.OPID_NAME, opidName);
+
+        db.beginTransaction();
+        try {
+            db.insertWithOnConflict(SqliteDBStructure.APPS_USED_RESOURCES, null, contentValues, SQLiteDatabase.CONFLICT_REPLACE);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public Cursor get_data(String query) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(query, null);
+        return cursor;
+    }
+
+    // get all the content from data_aggregate
+    public Cursor get_data_T1() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(QUERY_T1, null);
+        return cursor;
+    }
+
+    // get all the content from data_analyzing
+    public Cursor get_data_T2() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(QUERY_T2, null);
+        return cursor;
+    }
+
+    // get the current amount of rows in the DB
+    public int entries_T1() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(QUERY_T1, null);
+        return cursor.getCount();
+    }
+
+    // get the amount of rows in the DB specified by a sql query
+    public int entries(String query) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(query, null);
+        return cursor.getCount();
+    }
+
+    //Execute a single SQL statement that is NOT a SELECT or any other SQL statement that returns data.
+    public void query(String query) {
+        // Gets the data repository in write mode
+        SQLiteDatabase db = this.getWritableDatabase();
+        // insert into database
+        db.beginTransaction();
+        db.execSQL(query);
+        db.setTransactionSuccessful();
+        db.endTransaction();
+    }
+
+    // Runs the provided SQL and returns a string over the result set:
+    public String query_select_string(String query) {
+        // Gets the data repository in read mode
+        SQLiteDatabase db = this.getReadableDatabase();
+        // select from database
+        db.beginTransaction();
+        Cursor cursor = db.rawQuery(query, null);
+        db.setTransactionSuccessful();
+        db.endTransaction();
+
+        if (cursor != null)
+            return cursorToString(cursor);
+        else
+            try {
+                throw new SQLException();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        return null;
+    }
+
+    private String cursorToString(Cursor cursor) {
+        String result = new String();
+
+        if (cursor != null) {
+            cursor.moveToFirst();
+        }
+        while (!cursor.isAfterLast()) {
+            if (cursor.isLast())
+                result += cursor.getString(0);
+            else
+                result += cursor.getString(0) + ", ";
+            cursor.moveToNext();
+        }
+        return result;
+    }
+
+    // Runs the provided SQL and returns an array list:
+    // DO NOT CALL THIS METHOD, IF YOU MAKE A SELECT ON MULTIPLE COLUMNS
+    public ArrayList query_select_list(String query) {
+        // Gets the data repository in read mode
+        SQLiteDatabase db = this.getReadableDatabase();
+        // select from database
+        db.beginTransaction();
+        Cursor cursor = db.rawQuery(query, null);
+        db.setTransactionSuccessful();
+        db.endTransaction();
+
+        if (cursor != null)
+            return cursorToList(cursor);
+        else
+            try {
+                throw new SQLException();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        return null;
+    }
+
+    // only use when executing a query on
+    public ArrayList query_select_to_int(String query) {
+        // Gets the data repository in read mode
+        SQLiteDatabase db = this.getReadableDatabase();
+        // select from database
+        db.beginTransaction();
+        Cursor cursor = db.rawQuery(query, null);
+        db.setTransactionSuccessful();
+        db.endTransaction();
+
+        if (cursor != null)
+            return cursorToInt(cursor);
+        else
+            try {
+                throw new SQLException();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        return null;
+    }
+
+    private ArrayList cursorToInt(Cursor cursor) {
+        ArrayList result = new ArrayList();
+
+        if (cursor != null) {
+            cursor.moveToFirst();
+        }
+        while (!cursor.isAfterLast()) {
+            result.add(cursor.getInt(0));
+            cursor.moveToNext();
+        }
+
+        return result;
+    }
+
+    private ArrayList cursorToList(Cursor cursor) {
+        ArrayList result = new ArrayList();
+
+        if (cursor != null) {
+            cursor.moveToFirst();
+        }
+        while (!cursor.isAfterLast()) {
+            result.add(cursor.getString(0));
+            cursor.moveToNext();
+        }
+
+        return result;
+    }
+
+    public void writeDBtoFile() {
+        write_data_aggregate_to_file();
+    }
+
+    private void write_data_aggregate_to_file() {
+        JSONArray resultSet = new JSONArray();
+        String resultString = null;
+        Cursor cursor = get_data_T1();
+        cursor.moveToFirst();
+
+        while (!cursor.isAfterLast()) {
+
+            int totalColumn = cursor.getColumnCount();
+            JSONObject rowObject = new JSONObject();
+
+            for (int i = 0; i < totalColumn; i++) {
+                if (cursor.getColumnName(i) != null) {
+                    try {
+                        if (cursor.getString(i) != null) {
+                            rowObject.put(cursor.getColumnName(i), cursor.getString(i));
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            try {
+                resultSet.put(rowObject);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            cursor.moveToNext();
+        }
+        cursor.close();
+
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        JsonParser jp = new JsonParser();
+        try {
+            JsonElement je = jp.parse(resultSet.toString(4));
+            resultString = gson.toJson(je);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        try {
+            File dir = new File(Environment.getExternalStorageDirectory().getAbsolutePath());
+            if (!dir.exists())
+                dir.mkdir();
+            FileWriter file = new FileWriter(dir+ "/DFAT_aggregate.txt");
+            file.write(resultString);
+            file.flush();
+            file.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        File file= new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/DFAT_aggregate.txt");
+        Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        intent.setData(Uri.fromFile(file));
+        context.sendBroadcast(intent);
+    }
+
+    public void write_data_analyzing_to_file() {
+        JSONArray resultSet = new JSONArray();
+        String resultString = null;
+        Cursor cursor = get_data_T2();
+        cursor.moveToFirst();
+        while (!cursor.isAfterLast()) {
+
+            int totalColumn = cursor.getColumnCount();
+            JSONObject rowObject = new JSONObject();
+
+            for (int i = 0; i < totalColumn; i++) {
+                if (cursor.getColumnName(i) != null) {
+                    try {
+                        if (cursor.getString(i) != null) {
+                            rowObject.put(cursor.getColumnName(i), cursor.getString(i));
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            try {
+                resultSet.put(rowObject);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            cursor.moveToNext();
+        }
+        cursor.close();
+
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        JsonParser jp = new JsonParser();
+        try {
+            JsonElement je = jp.parse(resultSet.toString(4));
+            resultString = gson.toJson(je);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        try {
+            File dir = new File(Environment.getExternalStorageDirectory().getAbsolutePath());
+            if (!dir.exists())
+                dir.mkdir();
+            FileWriter file = new FileWriter(dir+ "/DFAT_analyzing.txt");
+            file.write(resultString);
+            file.flush();
+            file.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        File file= new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/DFAT_analyzing.txt");
+        Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        intent.setData(Uri.fromFile(file));
+        context.sendBroadcast(intent);
+    }
+}

@@ -1,0 +1,31 @@
+package com.op_dfat;
+
+import android.graphics.drawable.Drawable;
+
+/**
+ * Created by fakerinc on 18.12.16.
+ */
+
+public class Apps {
+
+    public Drawable icon;
+    public String appName;
+    public String packageName;
+    public String count;
+    public String resource;
+
+    public Apps(){
+        super();
+    }
+
+    public Apps(Drawable icon, String appName, String packageName, String count, String resource){
+
+        this.icon = icon;
+        this.appName = appName;
+        this.packageName = packageName;
+        this.count = count;
+        this.resource = resource;
+
+    }
+
+}

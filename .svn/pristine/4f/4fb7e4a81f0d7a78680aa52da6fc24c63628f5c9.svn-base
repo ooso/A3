@@ -1,0 +1,404 @@
+package com.op_dfat;
+
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.database.Cursor;
+import android.graphics.drawable.Drawable;
+import android.text.InputType;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Adapter;
+import android.widget.ArrayAdapter;
+import android.widget.BaseExpandableListAdapter;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.EditText;
+import android.widget.Filter;
+import android.widget.Filterable;
+import android.widget.ImageView;
+import android.widget.ListView;
+import android.widget.SimpleAdapter;
+import android.widget.TextView;
+import android.widget.Toast;
+import android.widget.ViewSwitcher;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import static android.graphics.Color.BLACK;
+import static android.graphics.Color.RED;
+
+/**
+ * Created by arrigo on 2/2/17.
+ */
+
+public class ExpandableAdapter extends BaseExpandableListAdapter implements Filterable{
+
+    private List<AppInfo> appList;
+    private List<AppInfo> filterdApplist;
+
+    private Context context;
+    private ViewSwitcher viewSwitcher;
+    private ListView listView;
+    private EditText reportReason;
+    private Button reportButton;
+    private TextView reportTitle, reportExplanationText;
+    private Filter filter;
+
+    private Map<Integer, List<String>> cbIndices;
+
+    public ExpandableAdapter(Context context, List<AppInfo> appList, Activity_apps.ReportView reportView) {
+        this.context = context;
+        this.appList = appList;
+        this.filterdApplist = this.appList;
+        this.viewSwitcher = reportView.viewSwitcher;
+        this.listView = reportView.listView;
+        this.reportReason = reportView.reportReason;
+        this.reportButton = reportView.reportButton;
+        this.reportTitle = reportView.reportTitle;
+        this.reportExplanationText = reportView.reportExplanationText;
+        initializeIndices();
+    }
+
+    private void initializeIndices () {
+
+        cbIndices = new HashMap<>();
+
+        for (int i = 0; i < getGroupCount(); i++) {
+            cbIndices.put(i, new ArrayList<String>());
+        }
+    }
+
+    @Override
+    public int getGroupCount() {
+        return filterdApplist.size();
+    }
+
+    @Override
+    public int getChildrenCount(int i) {
+        return filterdApplist.get(i).permissionInfos.size();
+    }
+
+    @Override
+    public Object getGroup(int i) {
+        return filterdApplist.get(i);
+    }
+
+    @Override
+    public Object getChild(int i, int i1) {
+        return filterdApplist.get(i).permissionInfos.get(i1);
+    }
+
+    @Override
+    public long getGroupId(int i) {
+        return i;
+    }
+
+    @Override
+    public long getChildId(int i, int i1) {
+        return i1;
+    }
+
+    @Override
+    public boolean hasStableIds() {
+        return false;
+    }
+
+    @Override
+    public void onGroupExpanded(int groupPosition) {
+        List<String> indices = cbIndices.get(groupPosition);
+        indices.clear();
+        cbIndices.remove(groupPosition);
+        cbIndices.put(groupPosition, indices);
+    }
+
+    @Override
+    public void onGroupCollapsed(int groupPosition) {
+        List<String> indices = cbIndices.get(groupPosition);
+        indices.clear();
+        cbIndices.remove(groupPosition);
+        cbIndices.put(groupPosition, indices);
+    }
+
+    @Override
+    public View getGroupView(final int i, final boolean expanded, View view, final ViewGroup viewGroup) {
+
+        final ViewHolderParent viewHolder;
+
+        final AppInfo app = (AppInfo) getGroup(i);
+
+        if (view == null) {
+            final LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            view = inflater.inflate(R.layout.adapter_apps, null);
+
+            viewHolder = new ViewHolderParent();
+
+            viewHolder.ivIcon = (ImageView) view.findViewById(R.id.appIcon);
+            viewHolder.tvName = (TextView) view.findViewById(R.id.appName);
+            viewHolder.tvCount = (TextView) view.findViewById(R.id.permissionCount);
+            viewHolder.ivAnomalyIcon = (ImageView) view.findViewById(R.id.appAnomalyIcon);
+            viewHolder.anomalyIcon = context.getDrawable(R.drawable.anomalyicon);
+            viewHolder.reportButton = (Button) view.findViewById(R.id.reportButton);
+
+            viewHolder.reportButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+
+                    reportTitle.setText(R.string.massReportResourceDialogTitle);
+                    reportExplanationText.setText(R.string.massReportResourceDialogText);
+                    reportButton.setText(R.string.buttonReport);
+
+                    boolean checkedAnything = false;
+
+                    final int appListIndex = viewHolder.position;
+                    final List<String> listOfCheckedCheckboxes = cbIndices.get(appListIndex);
+                    
+                    if (listOfCheckedCheckboxes != null)
+                        Log.d("Test", listOfCheckedCheckboxes.toString());
+                    else
+                        Log.d("Test", "[]");
+
+                    if (listOfCheckedCheckboxes != null) {
+                        checkedAnything = listOfCheckedCheckboxes.size() > 0;
+                    }
+
+                    if (checkedAnything) {
+
+                        final AppInfo appInfo = filterdApplist.get(appListIndex);
+                        final List<PermissionInfo> permissionList = appInfo.permissionInfos;
+
+
+                        List<String> result = new ArrayList<>();
+
+                        for (String index: listOfCheckedCheckboxes) {
+                            int indexParsed = Integer.parseInt(index);
+                            List<AnomalyInfo> anomalyInfos = permissionList.get(indexParsed).anomalyInfos;
+
+                            for (AnomalyInfo anomalyInfo: anomalyInfos) {
+                                result.add(permissionList.get(indexParsed).permission + "\n"
+                                        + anomalyInfo.accessTime.substring(11) + " \n" +
+                                        anomalyInfo.anomalyReason);
+                            }
+                        }
+
+                        ArrayAdapter<String> adapter = new ArrayAdapter<>(context, android.R.layout.simple_list_item_1, result);
+                        listView.setAdapter(adapter);
+
+                        reportButton.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View view) {
+                                String reasonForReporting = reportReason.getText().toString();
+                                for (String index: listOfCheckedCheckboxes) {
+                                    int indexParsd = Integer.parseInt(index);
+
+                                    if (Utility.isInternetAvailable(context)) {
+
+                                        MyClient.POST_Anomaly(appInfo.packageName, permissionList.get(indexParsd).permission, reasonForReporting, "1");
+                                        updateReported(appInfo.packageName, permissionList.get(indexParsd).permission);
+                                        Toast.makeText(context, context.getString(R.string.toastTransmissionConfirmation), Toast.LENGTH_SHORT).show();
+                                    } else {
+                                        Toast.makeText(context, "No internet connection", Toast.LENGTH_SHORT).show();
+                                    }
+                                    reportReason.setText("");
+                                    viewSwitcher.showPrevious();
+                                }
+                            }
+                        });
+                        viewSwitcher.showNext();
+                    }else{
+                        Toast.makeText(context, context.getString(R.string.noCheckboxSelectedText), Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+
+            view.setTag(viewHolder);
+        } else {
+            viewHolder = (ViewHolderParent) view.getTag();
+        }
+
+        viewHolder.position = i;
+        viewHolder.ivIcon.setImageDrawable(app.appIcon);
+        viewHolder.tvName.setText(app.appName);
+        viewHolder.tvCount.setText(app.permisionsUsed + " permissions used");
+
+        if (!expanded) {
+            viewHolder.reportButton.setVisibility(View.INVISIBLE);
+        } else {
+            viewHolder.reportButton.setVisibility(View.VISIBLE);
+        }
+
+        // sets a warning icon when a anomaly is thrown for the app
+
+        if (app.anomalyFound == 1){
+            viewHolder.tvName.setTextColor(RED);
+            viewHolder.ivAnomalyIcon.setImageDrawable(viewHolder.anomalyIcon);
+        } else {
+            viewHolder.tvName.setTextColor(BLACK);
+            viewHolder.ivAnomalyIcon.setImageDrawable(null);
+        }
+
+        return view;
+    }
+
+    @Override
+    public View getChildView(final int i, final int i1, final boolean lastChild, final View view, ViewGroup viewGroup) {
+
+        View rowView = view;
+        final ViewHolderChild viewHolder;
+
+        if (rowView == null) {
+            LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            rowView = inflater.inflate(R.layout.adapter_app_details, null);
+
+            viewHolder = new ViewHolderChild();
+
+            viewHolder.tvCount = (TextView) rowView.findViewById(R.id.resourceCount);
+            viewHolder.tvResource = (TextView) rowView.findViewById(R.id.resource);
+            viewHolder.cbSelected = (CheckBox) rowView.findViewById(R.id.checkboxMassReport);
+            viewHolder.cbSelected.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    if (viewHolder.cbSelected.isChecked()) {
+                        Log.d("Test", "checked: " + viewHolder.parentPosition + " "  + viewHolder.childPosition);
+                        if (!cbIndices.containsKey(viewHolder.parentPosition)) {
+                            ArrayList<String> list = new ArrayList<>();
+                            list.add(""+viewHolder.childPosition);
+                            cbIndices.put(viewHolder.parentPosition, list);
+                        } else {
+                            List<String> list = cbIndices.get(viewHolder.parentPosition);
+                            list.add(""+viewHolder.childPosition);
+                            cbIndices.remove(viewHolder.parentPosition);
+                            cbIndices.put(viewHolder.parentPosition, list);
+                        }
+                    } else {
+                        Log.d("Test", "unchecked: " + viewHolder.parentPosition + " "  + viewHolder.childPosition);
+                        List<String> list = cbIndices.get(viewHolder.parentPosition);
+                        list.remove(""+viewHolder.childPosition);
+                        cbIndices.remove(viewHolder.parentPosition);
+                        cbIndices.put(viewHolder.parentPosition, list);
+                    }
+                }
+            });
+
+            rowView.setTag(viewHolder);
+        } else {
+            viewHolder = (ViewHolderChild) rowView.getTag();
+        }
+
+        PermissionInfo permissionInfo = (PermissionInfo) getChild(i, i1);
+
+        viewHolder.parentPosition = i;
+        viewHolder.childPosition = i1;
+
+        viewHolder.cbSelected.setChecked(false);
+
+        // change the resource count and resource name
+        viewHolder.tvCount.setText(permissionInfo.count + "x");
+        viewHolder.tvResource.setText(permissionInfo.permission);
+
+        boolean anomalyFound = false;
+
+        List<AnomalyInfo> anomalyInfos = permissionInfo.anomalyInfos;
+        for (AnomalyInfo anomalyInfo : anomalyInfos) {
+            if (anomalyInfo.isAnomalous.equals("1")) {
+                anomalyFound = true;
+                break;
+            }
+        }
+
+        if (anomalyFound){
+            viewHolder.tvResource.setTextColor(RED);
+        } else {
+            viewHolder.tvResource.setTextColor(BLACK);
+        }
+
+        if (alreadyReported(appList.get(viewHolder.parentPosition).packageName, permissionInfo.permission)){
+            viewHolder.cbSelected.setAlpha(.5f);
+            viewHolder.cbSelected.setClickable(false);
+            viewHolder.cbSelected.setEnabled(false);
+        } else {
+            viewHolder.cbSelected.setAlpha(1);
+            viewHolder.cbSelected.setClickable(true);
+            viewHolder.cbSelected.setEnabled(true);
+        }
+
+        return rowView;
+    }
+
+    @Override
+    public boolean isChildSelectable(int i, int i1) {
+        return true;
+    }
+
+    @Override
+    public Filter getFilter() {
+        if (filter == null) {
+            filter = new FilterNames();
+        }
+        return filter;
+    }
+
+
+    private boolean alreadyReported(String app, String res) {
+        ArrayList<String> temp = SqliteDBHelper.getInstance(context).query_select_list("SELECT " + SqliteDBStructure.REPORTED + " FROM " + SqliteDBStructure.DATA_ANALYZING + " WHERE " + SqliteDBStructure.PACKAGE_NAME + " = '" + app + "' AND " + SqliteDBStructure.PERMISSION + " = '" + res + "'");
+        return temp.contains("1");
+    }
+
+    private void updateReported(String packageName, String permission) {
+        SqliteDBHelper.getInstance(context).query("UPDATE " + SqliteDBStructure.DATA_ANALYZING + " SET " + SqliteDBStructure.REPORTED + " = 1 WHERE " + SqliteDBStructure.PACKAGE_NAME + " = '" + packageName + "' AND " + SqliteDBStructure.PERMISSION + " = '" + permission + "'");
+    }
+
+    private static class ViewHolderParent {
+        ImageView ivIcon;
+        TextView tvName;
+        TextView tvCount;
+        ImageView ivAnomalyIcon;
+        Drawable anomalyIcon;
+        Button reportButton;
+        int position;
+    }
+
+    private static class ViewHolderChild {
+        TextView tvCount;
+        TextView tvResource;
+        CheckBox cbSelected;
+        int childPosition, parentPosition;
+    }
+
+    private class FilterNames extends Filter {
+
+        @Override
+        protected FilterResults performFiltering(CharSequence charSequence) {
+
+            FilterResults results = new FilterResults();
+
+            if (charSequence != null && charSequence.length() != 0) {
+                List<AppInfo> resultList = new ArrayList<>();
+                for (AppInfo app: appList) {
+                    if (app.appName.toLowerCase().contains(charSequence.toString().toLowerCase())) {
+                        resultList.add(app);
+                    }
+                }
+
+                results.count = resultList.size();
+                results.values = resultList;
+            } else {
+                results.count = appList.size();
+                results.values = appList;
+            }
+            return results;
+        }
+
+        @Override
+        protected void publishResults(CharSequence charSequence, FilterResults filterResults) {
+            filterdApplist = (List<AppInfo>) filterResults.values;
+
+            notifyDataSetChanged();
+        }
+    }
+}

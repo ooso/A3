@@ -1,0 +1,50 @@
+package com.op_dfat;
+
+import android.app.Activity;
+import android.content.Context;
+import android.database.Cursor;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.CursorAdapter;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import static android.content.ContentValues.TAG;
+
+
+public class Adapter_Apps extends ArrayAdapter<Apps> {
+
+    Context context;
+    private int layoutResourceId;
+    private Apps data[];
+
+    public Adapter_Apps(Context context, int layoutResourceId, Apps[] data){
+        super(context, layoutResourceId, data);
+        this.context = context;
+        this.layoutResourceId = layoutResourceId;
+        this.data = data;
+    }
+
+    @Override
+    public View getView(int position, View convertView, ViewGroup parent) {
+
+        LayoutInflater inflater = (LayoutInflater) context
+                .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        View rowView = inflater.inflate(R.layout.adapter_apps, parent, false);
+        ImageView ivIcon = (ImageView) rowView.findViewById(R.id.appIcon);
+        TextView tvName = (TextView) rowView.findViewById(R.id.appName);
+        TextView tvCount = (TextView) rowView.findViewById(R.id.appCount);
+        TextView tvResource= (TextView) rowView.findViewById(R.id.appResource);
+
+        // change the icon, appName, resource count and resource name
+        ivIcon.setImageDrawable(data[position].icon);
+        tvName.setText(data[position].appName);
+        tvCount.setText(data[position].count);
+        tvResource.setText(data[position].resource);
+
+        return rowView;
+    }
+}

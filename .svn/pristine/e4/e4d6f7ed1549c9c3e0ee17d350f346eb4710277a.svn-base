@@ -1,0 +1,239 @@
+package com.dfat.fakerinc;
+
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.SQLException;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Locale;
+
+
+/**
+ * Created by arrigo on 11/24/16.
+ */
+
+public class SqliteDBHelper extends SQLiteOpenHelper {
+
+    // static reference to this instance of the class
+    public static SqliteDBHelper sqliteDBHelper_instance = null;
+    // reference to the respective activity context
+    private Context context;
+    // current version of the database (any changes to the DB -> update version number)
+    public static int VERSION = 14;
+
+    // database related variables
+    public static final String DATABASE_NAME = "DFAT.db";
+    // variables for table data_aggregate
+    public static final String TABLE_NAME_1 = "data_aggregate";
+    public static final String APPNAME = "app_name";
+    public static final String TIME_STAMP = "last_used";
+    public static final String OPID = "opid_name";
+    public static final String RUNNING = "app_running";
+    // table data_aggregate initialization query
+    public final String INIT_QUERY_T1 = "CREATE TABLE " + TABLE_NAME_1
+            + " (" + APPNAME + " VARCHAR(50), "
+            + OPID + " VARCHAR(50), "
+            + TIME_STAMP + " DATETIME, "
+            + RUNNING + " NUMERIC, "
+            + "PRIMARY KEY (" + APPNAME + ", " + TIME_STAMP + ", " + OPID + ", " + RUNNING + "));";
+
+    // variables for table data_analysis
+    public static final String TABLE_NAME_2 = "data_analysis";
+    public static final String RESOURCE = "resource";
+    public static final String COUNT = "count";
+    public static final String ANOMALY = "anomaly";
+    // table data_aggregate initialization query
+    public final String INIT_QUERY_T2 = "CREATE TABLE " + TABLE_NAME_2
+            + " (" + APPNAME + " VARCHAR(50), "
+            + RESOURCE + " VARCHAR(50), "
+            + COUNT + " NUMERIC, "
+            + ANOMALY + " VARCHAR(50), "
+            + TIME_STAMP + " VARCHAR(50), "
+            + "PRIMARY KEY (" + APPNAME + ", " + RESOURCE + ", " + COUNT + ", " + ANOMALY + ", " + TIME_STAMP + "));";
+
+    // get all the data from data_aggregate
+    public final String GET_DATA_QUERY = "SELECT * FROM " + TABLE_NAME_1;
+    // queries for dropping tables
+    public final String DELETE_T1_QUERY = "DROP TABLE IF EXISTS " + TABLE_NAME_1;
+    public final String DELETE_T2_QUERY = "DROP TABLE IF EXISTS " + TABLE_NAME_2;
+
+    // private constructor. DB is initialiazed through a factory method
+    private SqliteDBHelper(Context context, String name, SQLiteDatabase.CursorFactory factory, int version) {
+        super(context, name, factory, version);
+        this.context = context;
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase sqLiteDatabase) {
+        sqLiteDatabase.execSQL(INIT_QUERY_T1);
+        sqLiteDatabase.execSQL(INIT_QUERY_T2);
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase sqLiteDatabase, int oldVersion, int newVersion) {
+        sqLiteDatabase.execSQL(DELETE_T1_QUERY);
+        sqLiteDatabase.execSQL(DELETE_T2_QUERY);
+        onCreate(sqLiteDatabase);
+    }
+
+    // factory method, which initializes this class
+    public static SqliteDBHelper getInstance(Context ctx) {
+        // only one instance of this class can exists
+        if (sqliteDBHelper_instance == null) {
+            sqliteDBHelper_instance = new SqliteDBHelper(ctx.getApplicationContext(), DATABASE_NAME, null, VERSION);
+        }
+        return sqliteDBHelper_instance;
+    }
+
+    // converter method, which converts the time of a Date Object into a string
+    private String dateTime(Date time_stamp) {
+        if (time_stamp == null) {
+            Date d = new Date();
+            SimpleDateFormat dateFormat = new SimpleDateFormat(
+                    "yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+            return dateFormat.format(d);
+        } else {
+            SimpleDateFormat dateFormat = new SimpleDateFormat(
+                    "yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+            return dateFormat.format(time_stamp);
+        }
+    }
+
+    // insert data into the DB
+    public void insert_into_DB(String opid, Date _timestamp, String packageName, int isRunning) {
+        // Gets the data repository in write mode
+        SQLiteDatabase db = this.getWritableDatabase();
+        // Create a new map of values, where column names are the keys
+        ContentValues contentValues = new ContentValues();
+
+        contentValues.put(OPID, opid);
+        contentValues.put(TIME_STAMP, dateTime(_timestamp));
+        contentValues.put(APPNAME, packageName);
+        contentValues.put(RUNNING, isRunning);
+
+        db.beginTransaction();
+        try {
+            db.insertWithOnConflict(TABLE_NAME_1, null, contentValues, SQLiteDatabase.CONFLICT_REPLACE);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    // get all the content from DB
+    public Cursor get_data() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(GET_DATA_QUERY, null);
+        return cursor;
+    }
+
+    // get the current amount of rows in the DB
+    public int entries() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(GET_DATA_QUERY, null);
+        return cursor.getCount();
+    }
+
+    //Execute a single SQL statement that is NOT a SELECT or any other SQL statement that returns data.
+    public void query(String query) {
+        // Gets the data repository in write mode
+        SQLiteDatabase db = this.getWritableDatabase();
+        // insert into database
+        db.beginTransaction();
+        db.execSQL(query);
+        db.setTransactionSuccessful();
+        db.endTransaction();
+    }
+
+    // Runs the provided SQL and returns a string over the result set, formatted like this:
+    // example: {whats app, anomaly x, 12.12.16}, {...}, ...
+    public String query_select(String query) {
+        // Gets the data repository in read mode
+        SQLiteDatabase db = this.getReadableDatabase();
+        // select from database
+        db.beginTransaction();
+        Cursor cursor = db.rawQuery(query, null);
+        db.setTransactionSuccessful();
+        db.endTransaction();
+
+        if (cursor != null)
+            return cursorToString(cursor);
+        else
+            try {
+                throw new SQLException();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        return null;
+    }
+
+    private String cursorToString(Cursor cursor) {
+        String result = null;
+
+        if (cursor != null) {
+            cursor.moveToFirst();
+        }
+        while (!cursor.isAfterLast()) {
+            for (int i = 0; i < cursor.getColumnCount(); i++) {
+                if (cursor.getColumnName(i) != null) {
+                    if (i == cursor.getColumnCount() - 1 && cursor.getString(i) != null) {
+                        result += cursor.getString(i);
+                    } else if (cursor.getString(i) != null) {
+                        result += cursor.getString(i) + ", ";
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
+    // Runs the provided SQL and returns an array list:
+    // DO NOT CALL THIS METHOD, IF YOU MAKE A SELECT ON MULTIPLE COLUMNS
+    public ArrayList query_select_list(String query) {
+        // Gets the data repository in read mode
+        SQLiteDatabase db = this.getReadableDatabase();
+        // select from database
+        db.beginTransaction();
+        Cursor cursor = db.rawQuery(query, null);
+        db.setTransactionSuccessful();
+        db.endTransaction();
+
+        if (cursor != null)
+            return cursorToList(cursor);
+        else
+            try {
+                throw new SQLException();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        return null;
+    }
+
+    private ArrayList cursorToList(Cursor cursor) {
+        ArrayList result = new ArrayList();
+
+        if (cursor != null) {
+            cursor.moveToFirst();
+        }
+        while (!cursor.isAfterLast()) {
+            result.add(cursor.getString(0));
+        }
+
+        return result;
+    }
+
+    public void reset_data_analyzing () {
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.beginTransaction();
+        db.delete(TABLE_NAME_2, null, null);
+        db.setTransactionSuccessful();
+        db.endTransaction();
+    }
+
+}

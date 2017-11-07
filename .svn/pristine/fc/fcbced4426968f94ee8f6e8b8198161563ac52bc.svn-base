@@ -1,0 +1,96 @@
+package com.op_dfat;
+
+/**
+ * Created by arrigo on 1/12/17.
+ */
+
+public class SqliteDBStructure {
+
+    public static final String DATABASE_NAME = "DFAT.db";
+
+    public static final String PACKAGE_NAME = "package_name";
+    public static final String PERMISSION = "permission";
+    public static final String ACCESS_TIME = "access_time";
+    public static final String APP_STATE = "app_state";
+    public static final String SCREEN_STATE = "screen_state";
+    public static final String SCREEN_ORIENTATION = "screen_orientation";
+    public static final String CLOSE_TO_OBJECT = "close_to_object";
+    public static final String COUNT = "count";
+    public static final String IS_ANOMALOUS = "is_anomalous";
+    public static final String ANOMALY_REASON = "anomaly_reason";
+    public static final String SCAN_TIME = "scan_time";
+    public static final String REPORTED = "reported";
+    public static final String FROM_USER = "from_user";
+    public static final String APP_TITLE = "app_title";
+    public static final String ICON_URL = "icon_url";
+    
+    public static final String APPS_LOGGED_AT_SCAN_TIME = "app_logged_at_scan_time";
+    public static final String DATA_AGGREGATE = "data_aggregate";
+    public static final String DATA_ANALYZING = "data_analysis";
+    public static final String SCAN_TIMES_LOGGED = "scan_times_logged";
+    public static final String SCANNED_APPS= "scanned_apps";
+    public static final String SAVE_SCAN = "save_scan";
+    public static final String SAVE_ANOMALIES = "save_anomalies";
+    public static final String PLAY_STORE_APP_INFOS = "play_store_app_infos";
+    
+    public static final String CREATE_APPS_LOGGED_AT_SCAN_TIME = "CREATE TABLE " + APPS_LOGGED_AT_SCAN_TIME + " (" +
+                                                    PACKAGE_NAME + " VARCHAR(100), " +
+                                                    "PRIMARY KEY (" + PACKAGE_NAME + "));";
+
+
+    public static final String CREATE_DATA_AGGREGATE = "CREATE TABLE " + DATA_AGGREGATE + " ("
+            + PACKAGE_NAME + " VARCHAR(100), "
+            + PERMISSION + " VARCHAR(100), "
+            + ACCESS_TIME + " DATETIME, "
+            + APP_STATE + " NUMERIC, "
+            + SCREEN_STATE + " NUMERIC, "
+            + SCREEN_ORIENTATION + " REAL, "
+            + CLOSE_TO_OBJECT + " NUMERIC, "
+            + "PRIMARY KEY (" + PACKAGE_NAME + ", " + PERMISSION + ", " + ACCESS_TIME +"));";
+
+
+    public static final String CREATE_DATA_ANALYZING = "CREATE TABLE " + DATA_ANALYZING
+            + " (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            + PACKAGE_NAME + " VARCHAR(100), "
+            + PERMISSION + " VARCHAR(100), "
+            + ACCESS_TIME + " DATETIME, "
+            + IS_ANOMALOUS + " VARCHAR(5), "
+            + COUNT + " NUMERIC, "
+            + ANOMALY_REASON + " VARCHAR(200), "
+            + SCAN_TIME + " DATETIME, "
+            + REPORTED + " NUMERIC); ";
+
+    public static final String CREATE_SCAN_TIMES_LOGGED = "CREATE TABLE " + SCAN_TIMES_LOGGED + " (" +
+            SCAN_TIME + " DATETIME, " +
+            "PRIMARY KEY (" + SCAN_TIME + "));";
+
+    public static final String CREATE_SCANNED_APPS = "CREATE TABLE " + SCANNED_APPS + " (" +
+            PACKAGE_NAME + " VARCHAR(100), " +
+            SCAN_TIME + " DATETIME, " +
+            "PRIMARY KEY(" + PACKAGE_NAME + ", " + SCAN_TIME + "));";
+
+    public static final String CREATE_SAVE_SCAN = "CREATE TABLE " + SAVE_SCAN
+            + " (" + PACKAGE_NAME + " VARCHAR(100), "
+            + PERMISSION + " VARCHAR(100), "
+            + ACCESS_TIME + " DATETIME, "
+            + APP_STATE + " NUMERIC, "
+            + SCREEN_STATE + " NUMERIC, "
+            + SCREEN_ORIENTATION + " REAL, "
+            + CLOSE_TO_OBJECT + " NUMERIC, "
+            + SCAN_TIME + " DATETIME, "
+            + "PRIMARY KEY (" + PACKAGE_NAME + ", " + PERMISSION + ", " + ACCESS_TIME + ", " + SCAN_TIME +"));";
+
+    public static final String CREATE_SAVE_ANOMALIES = "CREATE TABLE " + SAVE_ANOMALIES
+            + " (" + PACKAGE_NAME + " VARCHAR(100), "
+            + PERMISSION + " VARCHAR(100), "
+            + ANOMALY_REASON + " VARCHAR(200), "
+            + FROM_USER + " NUMERIC, "
+            + "PRIMARY KEY (" + PACKAGE_NAME + ", " + PERMISSION + ", " + ANOMALY_REASON + ", " + FROM_USER + "));";
+
+
+    public static final String CREATE_PLAY_STORE_APP_INFOS = "CREATE TABLE " + PLAY_STORE_APP_INFOS
+            + " (" + PACKAGE_NAME + " VARCHAR(100), "
+            + APP_TITLE + " VARCHAR(100), "
+            + ICON_URL + " VARCHAR(500), "
+            + "PRIMARY KEY (" + PACKAGE_NAME + "));";
+}

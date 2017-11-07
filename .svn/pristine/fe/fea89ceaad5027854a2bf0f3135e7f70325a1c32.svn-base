@@ -1,0 +1,48 @@
+package com.op_dfat;
+
+import android.content.Context;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import static android.graphics.Color.RED;
+
+
+public class Adapter_App_Details extends ArrayAdapter<Resources> {
+
+    Context context;
+    private int layoutResourceId;
+    private Resources[] resources;
+
+    public Adapter_App_Details(Context context, int layoutResourceId, Resources[] resources){
+        super(context, layoutResourceId, resources);
+        this.context = context;
+        this.layoutResourceId = layoutResourceId;
+        this.resources = resources;
+    }
+
+    @Override
+    public View getView(int position, View convertView, ViewGroup parent) {
+
+        LayoutInflater inflater = (LayoutInflater) context
+                .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        View rowView = inflater.inflate(R.layout.adapter_app_details, parent, false);
+        TextView tvCount = (TextView) rowView.findViewById(R.id.resourceCount);
+        TextView tvResource = (TextView) rowView.findViewById(R.id.resource);
+        CheckBox cbSelected = (CheckBox) rowView.findViewById(R.id.checkboxMassReport);
+
+        // change the resource count and resource name
+        tvCount.setText(resources[position].count + "x");
+        tvResource.setText(resources[position].resource);
+
+        if(resources[position].anomalous){
+            tvResource.setTextColor(RED);
+        }
+
+        return rowView;
+    }
+}

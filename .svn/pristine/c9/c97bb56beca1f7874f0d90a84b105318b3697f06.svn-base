@@ -1,0 +1,347 @@
+package com.op_dfat;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class Permission {
+    /** @hide Access to coarse location information. */
+    public static final int OP_COARSE_LOCATION = 0;
+    /** @hide Access to fine location information. */
+    public static final int OP_FINE_LOCATION = 1;
+    /** @hide Causing GPS to run. */
+    public static final int OP_GPS = 2;
+    /** @hide */
+    public static final int OP_VIBRATE = 3;
+    /** @hide */
+    public static final int OP_READ_CONTACTS = 4;
+    /** @hide */
+    public static final int OP_WRITE_CONTACTS = 5;
+    /** @hide */
+    public static final int OP_READ_CALL_LOG = 6;
+    /** @hide */
+    public static final int OP_WRITE_CALL_LOG = 7;
+    /** @hide */
+    public static final int OP_READ_CALENDAR = 8;
+    /** @hide */
+    public static final int OP_WRITE_CALENDAR = 9;
+    /** @hide */
+    public static final int OP_WIFI_SCAN = 10;
+    /** @hide */
+    public static final int OP_POST_NOTIFICATION = 11;
+    /** @hide */
+    public static final int OP_NEIGHBORING_CELLS = 12;
+    /** @hide */
+    public static final int OP_CALL_PHONE = 13;
+    /** @hide */
+    public static final int OP_READ_SMS = 14;
+    /** @hide */
+    public static final int OP_WRITE_SMS = 15;
+    /** @hide */
+    public static final int OP_RECEIVE_SMS = 16;
+    /** @hide */
+    public static final int OP_RECEIVE_EMERGECY_SMS = 17;
+    /** @hide */
+    public static final int OP_RECEIVE_MMS = 18;
+    /** @hide */
+    public static final int OP_RECEIVE_WAP_PUSH = 19;
+    /** @hide */
+    public static final int OP_SEND_SMS = 20;
+    /** @hide */
+    public static final int OP_READ_ICC_SMS = 21;
+    /** @hide */
+    public static final int OP_WRITE_ICC_SMS = 22;
+    /** @hide */
+    public static final int OP_WRITE_SETTINGS = 23;
+    /** @hide */
+    public static final int OP_SYSTEM_ALERT_WINDOW = 24;
+    /** @hide */
+    public static final int OP_ACCESS_NOTIFICATIONS = 25;
+    /** @hide */
+    public static final int OP_CAMERA = 26;
+    /** @hide */
+    public static final int OP_RECORD_AUDIO = 27;
+    /** @hide */
+    public static final int OP_PLAY_AUDIO = 28;
+    /** @hide */
+    public static final int OP_READ_CLIPBOARD = 29;
+    /** @hide */
+    public static final int OP_WRITE_CLIPBOARD = 30;
+    /** @hide */
+    public static final int OP_TAKE_MEDIA_BUTTONS = 31;
+    /** @hide */
+    public static final int OP_TAKE_AUDIO_FOCUS = 32;
+    /** @hide */
+    public static final int OP_AUDIO_MASTER_VOLUME = 33;
+    /** @hide */
+    public static final int OP_AUDIO_VOICE_VOLUME = 34;
+    /** @hide */
+    public static final int OP_AUDIO_RING_VOLUME = 35;
+    /** @hide */
+    public static final int OP_AUDIO_MEDIA_VOLUME = 36;
+    /** @hide */
+    public static final int OP_AUDIO_ALARM_VOLUME = 37;
+    /** @hide */
+    public static final int OP_AUDIO_NOTIFICATION_VOLUME = 38;
+    /** @hide */
+    public static final int OP_AUDIO_BLUETOOTH_VOLUME = 39;
+    /** @hide */
+    public static final int OP_WAKE_LOCK = 40;
+    /** @hide Continually monitoring location data. */
+    public static final int OP_MONITOR_LOCATION = 41;
+    /** @hide Continually monitoring location data with a relatively high power request. */
+    public static final int OP_MONITOR_HIGH_POWER_LOCATION = 42;
+    /** @hide Retrieve current usage stats via UsageStatsManager. */
+    public static final int OP_GET_USAGE_STATS = 43;
+    /** @hide */
+    public static final int OP_MUTE_MICROPHONE = 44;
+    /** @hide */
+    public static final int OP_TOAST_WINDOW = 45;
+    /** @hide Capture the device's display contents and/or audio */
+    public static final int OP_PROJECT_MEDIA = 46;
+    /** @hide Activate a VPN connection without user intervention. */
+    public static final int OP_ACTIVATE_VPN = 47;
+    /** @hide Access the WallpaperManagerAPI to write wallpapers. */
+    public static final int OP_WRITE_WALLPAPER = 48;
+    /** @hide Received the assist structure from an app. */
+    public static final int OP_ASSIST_STRUCTURE = 49;
+    /** @hide Received a screenshot from assist. */
+    public static final int OP_ASSIST_SCREENSHOT = 50;
+    /** @hide Read the phone state. */
+    public static final int OP_READ_PHONE_STATE = 51;
+    /** @hide Add voicemail messages to the voicemail content provider. */
+    public static final int OP_ADD_VOICEMAIL = 52;
+    /** @hide Access APIs for SIP calling over VOIP or WiFi. */
+    public static final int OP_USE_SIP = 53;
+    /** @hide Intercept outgoing calls. */
+    public static final int OP_PROCESS_OUTGOING_CALLS = 54;
+    /** @hide User the fingerprint API. */
+    public static final int OP_USE_FINGERPRINT = 55;
+    /** @hide Access to body sensors such as heart rate, etc. */
+    public static final int OP_BODY_SENSORS = 56;
+    /** @hide Read previously received cell broadcast messages. */
+    public static final int OP_READ_CELL_BROADCASTS = 57;
+    /** @hide Inject mock location into the system. */
+    public static final int OP_MOCK_LOCATION = 58;
+    /** @hide Read external storage. */
+    public static final int OP_READ_EXTERNAL_STORAGE = 59;
+    /** @hide Write external storage. */
+    public static final int OP_WRITE_EXTERNAL_STORAGE = 60;
+    /** @hide Turned on the screen. */
+    public static final int OP_TURN_SCREEN_ON = 61;
+    /** @hide Get device accounts. */
+    public static final int OP_GET_ACCOUNTS = 62;
+    /** @hide Control whether an application is allowed to run in the background. */
+    public static final int OP_RUN_IN_BACKGROUND = 63;
+
+
+    static public int [] getAllOps () {
+        return new int[] {
+                OP_COARSE_LOCATION,
+                OP_FINE_LOCATION,
+                OP_GPS,
+                OP_VIBRATE,
+                OP_READ_CONTACTS,
+                OP_WRITE_CONTACTS ,
+                OP_READ_CALL_LOG,
+                OP_WRITE_CALL_LOG ,
+                OP_READ_CALENDAR ,
+                OP_WRITE_CALENDAR ,
+                OP_WIFI_SCAN,
+                OP_POST_NOTIFICATION,
+                OP_NEIGHBORING_CELLS ,
+                OP_CALL_PHONE ,
+                OP_READ_SMS,
+                OP_WRITE_SMS,
+                OP_RECEIVE_SMS,
+                OP_RECEIVE_EMERGECY_SMS,
+                OP_RECEIVE_MMS,
+                OP_RECEIVE_WAP_PUSH ,
+                OP_SEND_SMS,
+                OP_READ_ICC_SMS,
+                OP_WRITE_ICC_SMS,
+                OP_WRITE_SETTINGS,
+                OP_SYSTEM_ALERT_WINDOW ,
+                OP_ACCESS_NOTIFICATIONS ,
+                OP_CAMERA,
+                OP_RECORD_AUDIO,
+                OP_PLAY_AUDIO,
+                OP_READ_CLIPBOARD,
+                OP_WRITE_CLIPBOARD,
+                OP_TAKE_MEDIA_BUTTONS,
+                OP_TAKE_AUDIO_FOCUS,
+                OP_AUDIO_MASTER_VOLUME,
+                OP_AUDIO_VOICE_VOLUME,
+                OP_AUDIO_RING_VOLUME,
+                OP_AUDIO_MEDIA_VOLUME ,
+                OP_AUDIO_ALARM_VOLUME,
+                OP_AUDIO_NOTIFICATION_VOLUME,
+                OP_AUDIO_BLUETOOTH_VOLUME,
+                OP_WAKE_LOCK,
+                OP_MONITOR_LOCATION,
+                OP_MONITOR_HIGH_POWER_LOCATION,
+                OP_GET_USAGE_STATS,
+                OP_MUTE_MICROPHONE,
+                OP_TOAST_WINDOW,
+                OP_PROJECT_MEDIA,
+                OP_ACTIVATE_VPN ,
+                OP_WRITE_WALLPAPER,
+                OP_ASSIST_STRUCTURE ,
+                OP_ASSIST_SCREENSHOT,
+                OP_READ_PHONE_STATE,
+                OP_ADD_VOICEMAIL ,
+                OP_USE_SIP,
+                OP_PROCESS_OUTGOING_CALLS,
+                OP_USE_FINGERPRINT,
+                OP_BODY_SENSORS,
+                OP_READ_CELL_BROADCASTS,
+                OP_MOCK_LOCATION,
+                OP_READ_EXTERNAL_STORAGE,
+                OP_WRITE_EXTERNAL_STORAGE,
+                OP_TURN_SCREEN_ON ,
+                OP_GET_ACCOUNTS,
+                OP_RUN_IN_BACKGROUND
+        };
+    }
+
+
+    /*private static String[] sOpNames = new String[] {
+            "COARSE_LOCATION",
+            "FINE_LOCATION",
+            "GPS",
+            "VIBRATE",
+            "READ_CONTACTS",
+            "WRITE_CONTACTS",
+            "READ_CALL_LOG",
+            "WRITE_CALL_LOG",
+            "READ_CALENDAR",
+            "WRITE_CALENDAR",
+            "WIFI_SCAN",
+            "POST_NOTIFICATION",
+            "NEIGHBORING_CELLS",
+            "CALL_PHONE",
+            "READ_SMS",
+            "WRITE_SMS",
+            "RECEIVE_SMS",
+            "RECEIVE_EMERGECY_SMS",
+            "RECEIVE_MMS",
+            "RECEIVE_WAP_PUSH",
+            "SEND_SMS",
+            "READ_ICC_SMS",
+            "WRITE_ICC_SMS",
+            "WRITE_SETTINGS",
+            "SYSTEM_ALERT_WINDOW",
+            "ACCESS_NOTIFICATIONS",
+            "CAMERA",
+            "RECORD_AUDIO",
+            "PLAY_AUDIO",
+            "READ_CLIPBOARD",
+            "WRITE_CLIPBOARD",
+            "TAKE_MEDIA_BUTTONS",
+            "TAKE_AUDIO_FOCUS",
+            "AUDIO_MASTER_VOLUME",
+            "AUDIO_VOICE_VOLUME",
+            "AUDIO_RING_VOLUME",
+            "AUDIO_MEDIA_VOLUME",
+            "AUDIO_ALARM_VOLUME",
+            "AUDIO_NOTIFICATION_VOLUME",
+            "AUDIO_BLUETOOTH_VOLUME",
+            "WAKE_LOCK",
+            "MONITOR_LOCATION",
+            "MONITOR_HIGH_POWER_LOCATION",
+            "GET_USAGE_STATS",
+            "MUTE_MICROPHONE",
+            "TOAST_WINDOW",
+            "PROJECT_MEDIA",
+            "ACTIVATE_VPN",
+            "WRITE_WALLPAPER",
+            "ASSIST_STRUCTURE",
+            "ASSIST_SCREENSHOT",
+            "OP_READ_PHONE_STATE",
+            "ADD_VOICEMAIL",
+            "USE_SIP",
+            "PROCESS_OUTGOING_CALLS",
+            "USE_FINGERPRINT",
+            "BODY_SENSORS",
+            "READ_CELL_BROADCASTS",
+            "MOCK_LOCATION",
+            "READ_EXTERNAL_STORAGE",
+            "WRITE_EXTERNAL_STORAGE",
+            "TURN_ON_SCREEN",
+            "GET_ACCOUNTS",
+            "RUN_IN_BACKGROUND",
+    };*/
+
+
+    public static Map<Integer, String[]> permissionDictionary = new HashMap<Integer, String[]>() {
+        {
+            put(OP_COARSE_LOCATION ,new String[]{"OP_COARSE_LOCATION", "Zugriff auf den ungefähren Standort. Hier kommt kein GPS zum Einsatz, sondern die Informationen von Funkmasten (Cell-ID) sowie WLANs."});
+            put(OP_FINE_LOCATION ,new String[]{"OP_FINE_LOCATION", "Zugriff auf die exakten, per GPS ermittelten Standortdaten"});
+            put(OP_GPS ,new String[]{"OP_GPS", "Zugriff auf die exakten, per GPS ermittelten Standortdaten"});
+            put(OP_VIBRATE ,new String[]{"OP_VIBRATE", "Zugriff auf die Vibrationsalarmsteuerung"});
+            put(OP_READ_CONTACTS ,new String[]{"OP_READ_CONTACTS", "Lesender Zugriff auf die persönlichen Kontaktdaten"});
+            put(OP_WRITE_CONTACTS ,new String[]{"OP_WRITE_CONTACTS", "Schreibender Zugriff auf die persönlichen Kontaktdaten"});
+            put(OP_READ_CALL_LOG ,new String[]{"OP_READ_CALL_LOG", "Lesender Zugriff auf das Anruf-Protokoll."});
+            put(OP_WRITE_CALL_LOG ,new String[]{"OP_WRITE_CALL_LOG", "Schreibender auf das Anruf-Protokoll."});
+            put(OP_READ_CALENDAR ,new String[]{"OP_READ_CALENDAR", "Lesender Zugriff auf persönliche Kalendardaten"});
+            put(OP_WRITE_CALENDAR ,new String[]{"OP_WRITE_CALENDAR", "Schreibender Zugriff auf persönliche Kalendardaten"});
+            put(OP_WIFI_SCAN ,new String[]{"OP_WIFI_SCAN", "Zugriff auf den WLAN-Status"});
+            put(OP_POST_NOTIFICATION ,new String[]{"OP_POST_NOTIFICATION", "Zugriff auf die Benachrichtigungsfunktion"});
+            put(OP_NEIGHBORING_CELLS ,new String[]{"OP_NEIGHBORING_CELLS", "?"});
+            put(OP_CALL_PHONE ,new String[]{"OP_CALL_PHONE", "Anruf ohne Bestätigung durch den Anwender tätigen"});
+            put(OP_READ_SMS ,new String[]{"OP_READ_SMS", "Lesender Zugriff auf SMS"});
+            put(OP_WRITE_SMS ,new String[]{"OP_WRITE_SMS", "SMS schreiben aber nicht senden"});
+            put(OP_RECEIVE_SMS ,new String[]{"OP_RECEIVE_SMS", "Eingehende SMS wird abgefangen"});
+            put(OP_RECEIVE_EMERGECY_SMS ,new String[]{"OP_RECEIVE_EMERGECY_SMS", "Eingehende Notfall-SMS wird abgefangen"});
+            put(OP_RECEIVE_MMS ,new String[]{"OP_RECEIVE_MMS", "Eingehende MMS wird abgefangen"});
+            put(OP_RECEIVE_WAP_PUSH ,new String[]{"OP_RECEIVE_WAP_PUSH", "Erlaubt den Empfang eingehender WAP Push Nachrichten."});
+            put(OP_SEND_SMS ,new String[]{"OP_SEND_SMS", "SMS senden. Und zwar ohne Zutun des Benutzer"});
+            put(OP_READ_ICC_SMS ,new String[]{"OP_READ_ICC_SMS", "Eingehende ICC SMS wird abgefangen"});
+            put(OP_WRITE_ICC_SMS ,new String[]{"OP_WRITE_ICC_SMS", "ICC SMS schreiben aber nicht senden"});
+            put(OP_WRITE_SETTINGS ,new String[]{"OP_WRITE_SETTINGS", "Lesen und Schreiben allgemeiner Systemeinstellungen"});
+            put(OP_SYSTEM_ALERT_WINDOW ,new String[]{"OP_SYSTEM_ALERT_WINDOW", "Fenster mit Systemwarnungen einblenden"});
+            put(OP_ACCESS_NOTIFICATIONS ,new String[]{"OP_ACCESS_NOTIFICATIONS", "?"});
+            put(OP_CAMERA ,new String[]{"OP_CAMERA", "Vollzugriff auf die Kamera"});
+            put(OP_RECORD_AUDIO ,new String[]{"OP_RECORD_AUDIO", "Audiodaten aufnehmen"});
+            put(OP_PLAY_AUDIO ,new String[]{"OP_PLAY_AUDIO", "Audiodaten abspielen"});
+            put(OP_READ_CLIPBOARD ,new String[]{"OP_READ_CLIPBOARD", "?"});
+            put(OP_WRITE_CLIPBOARD ,new String[]{"OP_WRITE_CLIPBOARD", "?"});
+            put(OP_TAKE_MEDIA_BUTTONS ,new String[]{"OP_TAKE_MEDIA_BUTTONS", "?"});
+            put(OP_TAKE_AUDIO_FOCUS ,new String[]{"OP_TAKE_AUDIO_FOCUS", "?"});
+            put(OP_AUDIO_MASTER_VOLUME ,new String[]{"OP_AUDIO_MASTER_VOLUME", "Verändernung der Master-Lautstärke"});
+            put(OP_AUDIO_VOICE_VOLUME ,new String[]{"OP_AUDIO_VOICE_VOLUME", "Veränderung der Sprech-Lautstärke"});
+            put(OP_AUDIO_RING_VOLUME ,new String[]{"OP_AUDIO_RING_VOLUME", "Veränderung der Klingelton-Lautstärke"});
+            put(OP_AUDIO_MEDIA_VOLUME ,new String[]{"OP_AUDIO_MEDIA_VOLUME", "Veränderung der Media-Lautstärke"});
+            put(OP_AUDIO_ALARM_VOLUME ,new String[]{"OP_AUDIO_ALARM_VOLUME", "Veränderung der Alarmton-Lautstärke"});
+            put(OP_AUDIO_NOTIFICATION_VOLUME ,new String[]{"OP_AUDIO_NOTIFICATION_VOLUME", "Veränderung der Benachrichtigungston-Lautstärke"});
+            put(OP_AUDIO_BLUETOOTH_VOLUME ,new String[]{"OP_AUDIO_BLUETOOTH_VOLUME", "Veränderung der Bluetoothton-Lautstärke"});
+            put(OP_WAKE_LOCK ,new String[]{"OP_WAKE_LOCK", "App hindert das System, in den Ruhemodus zu wechseln"});
+            put(OP_MONITOR_LOCATION ,new String[]{"OP_MONITOR_LOCATION", "Zugriff auf die Standortdaten"});
+            put(OP_MONITOR_HIGH_POWER_LOCATION ,new String[]{"OP_MONITOR_HIGH_POWER_LOCATION", "Hochfrequenter Zugriff auf die exakten, per GPS ermittelten Standortdaten"});
+            put(OP_GET_USAGE_STATS ,new String[]{"OP_GET_USAGE_STATS", "Zugriff auf die Nutzungsstatistik aller Apps auf Ihrem Smartphone"});
+            put(OP_MUTE_MICROPHONE ,new String[]{"OP_MUTE_MICROPHONE", "Das Microfon stumm stellen"});
+            put(OP_TOAST_WINDOW ,new String[]{"OP_TOAST_WINDOW", "Senden einer kurzen Benachrichtigung am unteren Bildschirmrand"});
+            put(OP_PROJECT_MEDIA ,new String[]{"OP_PROJECT_MEDIA", "?"});
+            put(OP_ACTIVATE_VPN ,new String[]{"OP_ACTIVATE_VPN", "Daten wurden möglicherweise über ein VPN verschickt"});
+            put(OP_WRITE_WALLPAPER ,new String[]{"OP_WRITE_WALLPAPER", "Veränderung des Hintergrundbildes"});
+            put(OP_ASSIST_STRUCTURE ,new String[]{"OP_ASSIST_STRUCTURE", "?"});
+            put(OP_ASSIST_SCREENSHOT ,new String[]{"OP_ASSIST_SCREENSHOT", "?"});
+            put(OP_READ_PHONE_STATE ,new String[]{"OP_READ_PHONE_STATE", "Zugriff auf die Telefonfunktionen des Gerätes"});
+            put(OP_ADD_VOICEMAIL ,new String[]{"OP_ADD_VOICEMAIL", "Erlaubt einer App, dem System Sprachnachrichten (Sprach-Mailbox) hinzuzufügen"});
+            put(OP_USE_SIP ,new String[]{"OP_USE_SIP", "App benutzt Internet-Telefonie"});
+            put(OP_PROCESS_OUTGOING_CALLS ,new String[]{"OP_PROCESS_OUTGOING_CALLS", "Ausgehende Anrufe beobachten, verändern oder abbrechen"});
+            put(OP_USE_FINGERPRINT ,new String[]{"OP_USE_FINGERPRINT", "Erlaubt einer App die Nutzung von Fingerprint-Hardware"});
+            put(OP_BODY_SENSORS ,new String[]{"OP_BODY_SENSORS", "Erlaubt der App den Zugriff auf Daten von Körpersensoren"});
+            put(OP_READ_CELL_BROADCASTS ,new String[]{"OP_READ_CELL_BROADCASTS", "?"});
+            put(OP_MOCK_LOCATION ,new String[]{"OP_MOCK_LOCATION", "Zugriff auf falsche Standortquellen"});
+            put(OP_READ_EXTERNAL_STORAGE ,new String[]{"OP_READ_EXTERNAL_STORAGE", "Lesezugriff auf externe Speichermedien"});
+            put(OP_WRITE_EXTERNAL_STORAGE ,new String[]{"OP_WRITE_EXTERNAL_STORAGE", "Schreibzugriff auf externe Speichermedien"});
+            put(OP_TURN_SCREEN_ON ,new String[]{"OP_TURN_SCREEN_ON", "TURN_SCREEN_ON"});
+            put(OP_GET_ACCOUNTS ,new String[]{"OP_GET_ACCOUNTS", "App ruft Liste konfigurierter Accounts ab (nur die Accounts, nicht die Zugangsdaten selber)"});
+            put(OP_RUN_IN_BACKGROUND ,new String[]{"OP_RUN_IN_BACKGROUND", "RUN_IN_BACKGROUND"});
+        }
+    };
+}
+
+
+
+

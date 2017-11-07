@@ -1,0 +1,65 @@
+package com.op_dfat;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Created by arrigo on 2/4/17.
+ */
+
+public class ScanSettings {
+
+    // variable for the shared preference file
+    public static final String SETTINGS = "com.op_dfat.ScanSettings.Settings";
+
+
+    public static final long[] scanDurationsInMS = new long[] {
+            TimeUnit.MINUTES.toMillis(30),
+            TimeUnit.HOURS.toMillis(1),
+            TimeUnit.HOURS.toMillis(12),
+            TimeUnit.DAYS.toMillis(1),
+            TimeUnit.DAYS.toMillis(7)
+    };
+
+    public static int indexScanDuration = 4;
+
+    public static final long[] scanIntervalInMS = new long[] {
+            TimeUnit.SECONDS.toMillis(1),
+            TimeUnit.SECONDS.toMillis(3),
+            TimeUnit.SECONDS.toMillis(5)
+    };
+
+    public static int indexScanInterval = 2;
+
+    public static final long[] scanDeletionInMS = new long[] {
+            TimeUnit.DAYS.toMillis(7),
+            TimeUnit.DAYS.toMillis(30),
+            TimeUnit.DAYS.toMillis(365),
+            TimeUnit.DAYS.toMillis(0),
+    };
+
+    public static int indexScanDeletion = 3;
+
+    public static void saveSettings (Context context) {
+        // save importend varibale states in shared preference file
+        SharedPreferences settings = context.getSharedPreferences(SETTINGS, 0);
+        SharedPreferences.Editor outState = settings.edit();
+        outState.putInt("indexScanDuration", indexScanDuration);
+        outState.putInt("indexScanInterval", indexScanInterval);
+        outState.putInt("indexScanDeletion", indexScanDeletion);
+
+        // Commit the edits!
+        outState.commit();
+    }
+
+    public static void loadSettings (Context context) {
+        // Restore preferences
+        SharedPreferences settings = context.getSharedPreferences(SETTINGS, 0);
+
+        indexScanDuration = settings.getInt("indexScanDuration", 4);
+        indexScanInterval = settings.getInt("indexScanInterval", 2);
+        indexScanDeletion = settings.getInt("indexScanDeletion", 3);
+    }
+}

@@ -1,0 +1,29 @@
+package com.op_dfat;
+
+/**
+ * Created by fakerinc on 18.12.16.
+ */
+
+public class Resources implements Comparable<Resources>{
+
+    public String count;
+    public String resource;
+    public boolean anomalous;
+
+    public Resources(){
+        super();
+    }
+
+    public Resources(String count, String resource, boolean anomalous){
+        this.count = count;
+        this.resource = resource;
+        this.anomalous = anomalous;
+    }
+
+    @Override
+    public int compareTo(Resources resources) {
+        int countValue1 = Integer.parseInt(count);
+        int countValue2 = Integer.parseInt(resources.count);
+        return countValue2 - countValue1;
+    }
+}

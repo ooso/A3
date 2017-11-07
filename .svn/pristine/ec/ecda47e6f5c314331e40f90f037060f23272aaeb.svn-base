@@ -1,0 +1,62 @@
+package com.op_dfat;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.drawable.Drawable;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.ImageView;
+import android.widget.TextView;
+import java.util.ArrayList;
+
+import static android.content.ContentValues.TAG;
+import static android.graphics.Color.RED;
+
+public class Adapter_Apps extends ArrayAdapter<Apps> {
+
+    Context context;
+    private int layoutResourceId;
+    private Apps data[];
+    String timestamp;
+    ArrayList<String> tmp = new ArrayList<>();
+
+    public Adapter_Apps(Context context, int layoutResourceId, Apps[] data){
+        super(context, layoutResourceId, data);
+        this.context = context;
+        this.layoutResourceId = layoutResourceId;
+        this.data = data;
+    }
+
+    @Override
+    public View getView(int position, View convertView, ViewGroup parent) {
+
+        LayoutInflater inflater = (LayoutInflater) context
+                .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        timestamp = data[position].timestamp;
+        View rowView = inflater.inflate(R.layout.adapter_apps, parent, false);
+        ImageView ivIcon = (ImageView) rowView.findViewById(R.id.appIcon);
+        TextView tvName = (TextView) rowView.findViewById(R.id.appName);
+        TextView tvCount = (TextView) rowView.findViewById(R.id.appCount);
+        TextView tvResource= (TextView) rowView.findViewById(R.id.appResource);
+        ImageView ivAnomalyIcon = (ImageView) rowView.findViewById(R.id.appAnomalyIcon);
+        Drawable anomalyIcon = getContext().getDrawable(R.drawable.anomalyicon);
+
+        // change the icon, appName, resource count and resource name
+        ivIcon.setImageDrawable(data[position].icon);
+        tvName.setText(data[position].appName);
+        tvCount.setText(data[position].count);
+        tvResource.setText(data[position].resource);
+
+        // sets a warning icon when a anomaly is thrown for the app
+        if(data[position].anomalyFound == 1){
+            tvName.setTextColor(RED);
+            ivAnomalyIcon.setImageDrawable(anomalyIcon);
+        }
+        return rowView;
+    }
+
+}

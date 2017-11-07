@@ -1,0 +1,27 @@
+package com.op_dfat;
+
+/**
+ * Created by fakerinc on 18.12.16.
+ */
+
+public class Apps {
+
+    public int icon;
+    public String appName;
+    public int count;
+    public String resource;
+
+    public Apps(){
+        super();
+    }
+
+    public Apps(int icon, String appName, int count, String resource){
+
+        this.icon = icon;
+        this.appName = appName;
+        this.count = count;
+        this.resource = resource;
+
+    }
+
+}

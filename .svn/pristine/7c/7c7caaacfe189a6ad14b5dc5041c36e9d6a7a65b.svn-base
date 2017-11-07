@@ -1,0 +1,196 @@
+package com.op_dfat;
+
+import android.Manifest;
+import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
+import android.content.res.Configuration;
+import android.os.Bundle;
+import android.os.IBinder;
+import android.support.annotation.NonNull;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.Toast;
+
+/**
+ * Created by fakerinc on 19.11.16.
+ */
+
+public class Start extends Activity {
+
+    // reference to the background service
+    public MyService mService;
+    // is the service bound to this activity
+    boolean isBound = false;
+    // reference to the custom UsageManager
+    public UsageManager usageManager;
+
+
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_start);
+
+        // get the reference to the instance of the UsageManager class
+        usageManager = UsageManager.getInstance(getApplicationContext(), this);
+        // bind this activity to the background service
+        bindBackgroundService();
+        //findViewById(R.id.stopScan).setEnabled(false);
+
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // if the service is still bound to this activity...
+        if (mConnection != null) {
+            // ...unbind it to prevent data leaks
+            unbindService(mConnection);
+        }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.menu_options, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        return item.getItemId() == R.id.settings || super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+    }
+
+    // bind and auto start the background service
+    private void bindBackgroundService() {
+        Intent intent = new Intent(getApplicationContext(), MyService.class);
+        bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+    }
+
+    // Defines callbacks for service binding, passed to bindService()
+    private ServiceConnection mConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+            // We've bound to the Service, cast the IBinder and get Service instance
+            MyService.LocalBinder binder = (MyService.LocalBinder) iBinder;
+            // set this classes mService to the service instance
+            mService = binder.getService();
+            // service is bound
+            isBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            isBound = false;
+        }
+    };
+
+    // button start analyzing
+    public void startAnalyzing(View view)
+    {
+        if (!mService.analyzing) {
+            Toast.makeText(getApplicationContext(), "Started analyzing...", Toast.LENGTH_SHORT).show();
+            // start the analyzing process in the background service
+            startService(new Intent(getApplicationContext(), MyService.class));
+            mService.startAnalyzing();
+        }
+    }
+
+    // button stop analyzing
+    public void stopAnalyzing(View view)
+    {
+        if (mService.analyzing) {
+            Toast.makeText(getApplicationContext(), "Stopped analyzing", Toast.LENGTH_SHORT).show();
+            // stop the analyzing process in the background service
+            mService.stopAnalyzing();
+            // show an notification with the current entries in the DB
+            showNotification();
+            // try to write the content of DB into a text file
+            mService.DBtoFile(this);
+            stopService(new Intent(getApplicationContext(), MyService.class));
+        }
+
+    }
+
+    // show a notification
+    public void showNotification() {
+        NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+
+        Notification notification = new Notification.Builder(this)
+                .setSmallIcon(R.drawable.boo)
+                .setContentTitle("Operation DFAT")
+                .setContentText("Entries in DB: " + SqliteDBHelper.getInstance(this).entries())
+                .build();
+
+        notificationManager.notify(0, notification);
+    }
+
+
+    // callback for the permission request
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case 1:
+                // if permission has been granted by the user, execute code
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    //sqlHelper.DBtoText();
+                    mService.writeDBtoFile();
+                }
+        }
+    }
+
+    // callback for the ActivityCompact request to set the UsageStats permission
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        switch (requestCode){
+            case UsageManager.MY_PERMISSIONS_REQUEST_PACKAGE_USAGE_STATS:
+                if (usageManager.hasPermission()){
+                    usageManager.readUsageLog();
+                }else{
+                    requestPermissions(new String[]{Manifest.permission.PACKAGE_USAGE_STATS}, UsageManager.MY_PERMISSIONS_REQUEST_PACKAGE_USAGE_STATS);
+                }
+                break;
+        }
+    }
+
+    public void settingsButton(MenuItem item) {
+        Intent intent = new Intent(getApplicationContext(), SettingsPage.class);
+        startActivity(intent);
+    }
+
+    public void tmpTestButton(View view) {
+        Intent intent = new Intent(getApplicationContext(), RD_Test.class);
+        startActivity(intent);
+    }
+
+    public void getHelp(MenuItem item) {
+
+    }
+
+    public void getAboutUs(MenuItem item) {
+
+    }
+
+    public void getDFAT(View v) {
+        Intent intent = new Intent(getApplicationContext(), DFAT.class);
+        startActivity(intent);
+    }
+}

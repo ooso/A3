@@ -1,0 +1,54 @@
+package com.op_dfat;
+
+import android.content.Context;
+import android.content.pm.PackageManager;
+import android.graphics.drawable.Drawable;
+import android.util.Log;
+
+import java.util.Calendar;
+import java.util.Date;
+
+/**
+ * Created by arrigo on 12/21/16.
+ */
+
+public class Utility {
+
+    public static String packageToAppName(Context context, String packageName) {
+        PackageManager packageManager= context.getApplicationContext().getPackageManager();
+
+        try {
+            return (String) packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0));
+        } catch (PackageManager.NameNotFoundException e) {
+            Log.d("UTILITY", "app name for " + packageName + " not found");
+            return packageName;
+        }
+    }
+
+    public static Drawable getAppIcon(Context context, String packageName) {
+        PackageManager packageManager= context.getApplicationContext().getPackageManager();
+
+        try {
+            return packageManager.getApplicationIcon(packageName);
+        } catch (PackageManager.NameNotFoundException e) {
+            Log.d("UTILITY", "app icon for " + packageName + " not found");
+        }
+        return null;
+    }
+
+    public static Date getDate(int year, int month, int day) {
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.YEAR, year);
+        cal.set(Calendar.MONTH, month);
+        cal.set(Calendar.DAY_OF_MONTH, day);
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        return cal.getTime();
+    }
+
+    public static long minutesToMilliseconds (long minutes) {
+        return minutes * 60 * 1000;
+    }
+}

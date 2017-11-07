@@ -1,0 +1,47 @@
+<resources>
+    <string name="app_name">DFAT</string>
+    <string name="permissionNotificationTitle">Permission Usage Info</string>
+    <string name="permissionNotificationMessage">Thank you for using our app!
+        In order for our App to work properly, we need the following permissions:\n\t
+        Permission to scan your phone\'s usage stats, so we can check which apps are currently running etc..\n\t
+        Permission to scan which of your installed apps use what permission at a certain point</string>
+    <string name="permissionNotificationPositive">I\'m OK with that</string>
+    <string name="settings">Settings</string>
+    <string name="impressum">About us</string>
+    <string name="help">Help</string>
+    <string name="startScan">Start Scan</string>
+    <string name="stopScan">Stop Scan</string>
+    <string name="toastStartScan">Scan started</string>
+    <string name="toastStopScan">Scan stopped</string>
+    <string name="automaticShutdownMessage">Scan automatically stopped</string>
+    <string name="ProgressbarInfo">Analyzing…\nPress the button again to evaluate the analysis\n\n
+        Hint:\nThe longer the duration of the scan, the more detailed the scan. We recommend a duration of at least 60 minutes.</string>
+    <string name="analysis">Analyze</string>
+    <string name="history">History</string>
+    <string name="blacklist">Blacklist</string>
+    <string name="searchViewHint">Search here…</string>
+    <string name="analysisTextInfo">We should really think about, what text to put here!</string>
+    <string name="searchButtonText">Search</string>
+    <string name="settingsInfo">There will be options displayed here</string>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="action_settings">Settings</string>
+    <string name="scanListInfoText">List of past scans</string>
+    <string name="appListInfoText">List of suspicious apps</string>
+    <string name="noCheckboxSelectedTitle">No resources selected</string>
+    <string name="massReportResourceDialogTitle">Report</string>
+    <string name="anomalousResourceDialogTitle">Reason why this resource may be anomalous</string>
+    <string name="nonAnomalousResourceDialogTitle">No anomaly found</string>
+    <string name="noCheckboxSelectedText">Please select at least one resource that you want to report</string>
+    <string name="massReportResourceDialogText">You can give an explanation to why you want to report these resources:</string>
+    <string name="nonAnomalousStandardText">You can still report the resource and explain why!</string>
+    <string name="anomalousResourceDeReportText">This resource was marked as anomalous. With an optional explanation
+        you can report this app as normal.</string>
+    <string name="buttonReport">Report</string>
+    <string name="buttonDeReport">DeReport</string>
+    <string name="buttonCancel">Cancel</string>
+    <string name="toastTransmissionConfirmation">Report successfully transmitted</string>
+    <string name="section_format">Hello World from section: %1$d</string>
+    <string name="getScans">Click me!</string>
+    <string name="comingSoon">Under Construction</string>
+    <string name="scan_successful">Scan was successful</string>
+</resources>

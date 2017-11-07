@@ -1,0 +1,121 @@
+<resources>
+    <string name="app_name">DFAT</string>
+    <string name="permissionNotificationTitle">Permission Usage Info</string>
+    <string name="permissionNotificationMessage">Thank you for using our app!
+        In order for our App to work properly, we need the following permissions:\n\t
+        Permission to scan your phone\'s usage stats, so we can check which apps are currently running etc..\n\t
+        Permission to scan which of your installed apps use what permission at a certain point</string>
+    <string name="permissionNotificationPositive">I\'m OK with that</string>
+    <string name="settings">Settings</string>
+    <string name="impressum">About us</string>
+    <string name="help">Help</string>
+    <string name="appsToScan">Apps to scan</string>
+    <string name="startScan">Start Scan</string>
+    <string name="stopScan">Stop Scan</string>
+    <string name="toastStartScan">Scan started</string>
+    <string name="toastStopScan">Scan stopped</string>
+    <string name="scanDuration">Scan-duration</string>
+    <string name="entriesFound">Entries found:</string>
+    <string name="automaticShutdownMessage">Scan automatically stopped</string>
+    <string name="ProgressbarInfo">Analyzing…\nPress the button again to evaluate the analysis\n\n
+        Hint:\nThe longer the duration of the scan, the more detailed the scan. We recommend a duration of at least 60 minutes.</string>
+    <string name="analysis">Analyze</string>
+    <string name="history">History</string>
+    <string name="blacklist">Blacklist</string>
+    <string name="searchViewHint">Search here…</string>
+    <string name="analysisTextInfo">We should really think about, what text to put here!</string>
+    <string name="searchButtonText">Search</string>
+    <string name="settingsInfo">There will be options displayed here</string>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="action_settings">Settings</string>
+    <string name="scanListInfoText">List of past scans</string>
+    <string name="appListInfoText">List of suspicious apps</string>
+    <string name="blacklistTitle">Blacklist</string>
+    <string name="noCheckboxSelectedTitle">No resources selected</string>
+    <string name="massReportResourceDialogTitle">Report</string>
+    <string name="anomalousResourceDialogTitle">Reason why this resource may be anomalous</string>
+    <string name="nonAnomalousResourceDialogTitle">No anomaly found</string>
+    <string name="noCheckboxSelectedText">Please select at least one resource that you want to report</string>
+    <string name="massReportResourceDialogText">You can give an explanation to why you want to report these resources:</string>
+    <string name="nonAnomalousStandardText">You can still report the resource and explain why!</string>
+    <string name="anomalousResourceDeReportText">This resource was marked as anomalous. With an optional explanation
+        you can report this app as normal.</string>
+    <string name="buttonReport">Report</string>
+    <string name="buttonDeReport">DeReport</string>
+    <string name="buttonCancel">Cancel</string>
+    <string name="toastTransmissionConfirmation">Report successfully transmitted</string>
+    <string name="section_format">Hello World from section: %1$d</string>
+    <string name="getScans">Click me!</string>
+    <string name="comingSoon">Under Construction</string>
+    <string name="scan_successful">Scan was successful</string>
+    <string name="appsToScanTitle">Apps included in the scan</string>
+
+     <string name="ImpressumText"><![CDATA[
+
+Entries reffered to § 5 TMG:
+
+<br />
+<br />
+Michael Krapp
+<br />
+Email:
+michaelkrapp91@mail.de
+<br />
+<br />
+<br />
+Arrigo Paterno
+<br />
+Email:
+arrigo.paterno@gmx.de
+<br />
+<br />
+<br />
+Dawid Wowniuk
+<br />
+Email:
+wowniuk-dawid@web.de
+<br />
+<br />
+<br />
+Robin Dieges
+<br />
+Email:
+robindieges@web.de
+<br />
+<br />
+<br />
+Marvin Duchmann
+<br />
+Email:
+marvinduchmann@web.de
+<br />
+<br />
+<br />
+Daniel Mattes
+<br />
+Email:
+mail@d-mattes.de
+<br />
+<br />
+<br />
+
+<h4>Limitation of liability for internal content (Disclaimer)</h4>
+<br />
+The content of our website has been compiled with meticulous care and to the best of our knowledge.
+However, we cannot assume any liability for the up-to-dateness, completeness or accuracy of any of the pages.
+Pursuant to section 7, para. 1 of the TMG (Telemediengesetz – Tele Media Act by German law), we as service providers are liable for our own content on these pages in accordance with general laws.
+However, pursuant to sections 8 to 10 of the TMG, we as service providers are not under obligation to monitor external information provided or stored on our website. Once we have become aware of a specific infringement of the law, we will immediately remove the content in question.
+Any liability concerning this matter can only be assumed from the point in time at which the infringement becomes known to us.
+<br />
+<br />
+<h4>Copyright</h4>
+The content and works published on this website are governed by the copyright laws of Germany.
+Any duplication, processing, distribution or any form of utilisation beyond the scope of copyright law shall require the prior written consent of the author or authors in question.
+<br />
+<br />
+<cite>Quelle:  href="https://www.e-recht24.de">https://www.e-recht24.de</cite>
+
+]]> </string>
+
+
+</resources>

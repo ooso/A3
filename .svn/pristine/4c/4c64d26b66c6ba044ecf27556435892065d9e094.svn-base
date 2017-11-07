@@ -1,0 +1,86 @@
+package com.op_dfat;
+
+import android.content.Context;
+import android.content.Intent;
+import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
+import java.util.Date;
+
+/**
+ * Created by arrigo on 1/18/17.
+ */
+
+public class Evaluation implements EventListener {
+
+    public static final String SAMPLE_COUNT = "com.op_dfat.Evaluation.SampleCount";
+
+    private static Evaluation evaluation = null;
+    private PermissionLogReader permissionLogReader;
+    private UsageManager usageManager;
+    private SqliteDBHelper sqliteDBHelper;
+
+    public Context context;
+
+    public static long sampleCount = 0;
+    private long currentSampleCount = 0;
+
+    private Evaluation(Context context) {
+        // get the instance to all necessary classes
+        permissionLogReader = PermissionLogReader.getInstance(context);
+        usageManager = UsageManager.getInstance(context, null);
+        sqliteDBHelper = SqliteDBHelper.getInstance(context);
+        // subscribe this listener
+        permissionLogReader.subscribe(this);
+        // store refererence to the context
+        this.context  = context;
+    }
+
+    public static Evaluation getInstance(Context context) {
+        if (evaluation == null) {
+            return new Evaluation(context);
+        }
+        return evaluation;
+    }
+
+    @Override
+    public void OnPermissionLogRead(String packageName, int opID, Date accessTime) {
+        evaluateSample(packageName, opID, accessTime);
+    }
+
+    private void evaluateSample (String packageName, int opID, Date accessTime) {
+        
+        if (!ExcludedApps.isAppExcluded(packageName)) {
+            // convert opid into respectiv permission entry
+            String opidName = Utility.opIDToName(opID);
+            // get the current state the app is in at accesTime
+            UsageManager.State appState = usageManager.checkUsageLog(packageName, accessTime);
+            // get the screen state, screen orientation and proximity from objects to screen
+            int screenOrientation = MotionSensors.getScreenOrientationAtAccessTime(accessTime);
+            int screenState = MotionSensors.getScreenStatesAtAccessTime(accessTime);
+            int closeToObject = MotionSensors.getCloseToObjectAtAccessTime(accessTime);
+
+            Log.d("EVALUATION", Utility.packageToAppName(context, packageName) + ": " + appState.name() + " - "  + opidName + " - " + Utility.standardDateTime(accessTime) + " - " + screenState + " - " + screenOrientation + " - " + (closeToObject==1?true:false));
+
+            // insert log data into raw data storage
+            sqliteDBHelper.insertIntoAppsLoggedAtScanTime(packageName);
+            sqliteDBHelper.insertIntoDataAggregate(packageName, opidName, accessTime, appState.value, screenState, screenOrientation, closeToObject);
+
+            sampleCount = sqliteDBHelper.entries(SqliteDBHelper.GET_DATA_AGGREGATE);
+
+            if (sampleCount > currentSampleCount && MotionSensors.screenState == 1) {
+                // update ui
+                Intent intent = new Intent();
+                intent.setAction(SAMPLE_COUNT);
+                intent.putExtra("currentSampleCount", sampleCount);
+                LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+
+                currentSampleCount = sampleCount;
+            }
+        }
+    }
+
+    public void resetSampleCounts () {
+        sampleCount = 0;
+        currentSampleCount = 0;
+    }
+}

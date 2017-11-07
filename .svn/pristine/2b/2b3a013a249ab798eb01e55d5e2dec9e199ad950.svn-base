@@ -1,0 +1,169 @@
+package com.op_dfat;
+
+import android.app.IntentService;
+import android.content.Intent;
+import android.util.Log;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+
+/**
+ * Created by Marvin on 12.12.2016.
+ */
+
+public class Datamining extends IntentService {
+
+    ArrayList<String> pkgNames;
+    ArrayList<Integer> anomalies;
+    ArrayList<String> criticalRecources = new ArrayList<>(Arrays.asList("Microphone", "Camera", "Contacts", "Location"));
+
+    SqliteDBHelper sqliteDBHelper;
+    String actTimeStamp;
+    Date start_scan_time;
+
+    public Datamining() {
+        super("Datamining");
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        sqliteDBHelper = SqliteDBHelper.getInstance(this);
+        start_scan_time = new Date();
+    }
+
+    private void startAnalysis() {
+        sendRawData();
+        actTimeStamp = actTimeStamp.substring(0, 10) + " " + actTimeStamp.substring(11);
+        pkgNames = getAppName();
+        anomalies = buildZeroArrayList(pkgNames);
+        Collections.sort(pkgNames);
+        collectResInfos(pkgNames);
+        OnDataminingFinished();
+    }
+
+    void OnDataminingFinished () {
+        Intent intent = new Intent();
+        intent.setAction(MainActivity.DATA_MINING_FINISHED);
+        intent.putExtra("scanStop", actTimeStamp);
+        sendBroadcast(intent);
+    }
+
+    private ArrayList<String> getAppName() {
+        return sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.APP_NAME + " FROM " + SqliteDBStructure.APPS_LOGGED);
+    }
+
+    private ArrayList<Integer> buildZeroArrayList(ArrayList<String> names){
+        ArrayList<Integer> list = new ArrayList();
+        for(int i = 0; i < names.size(); i++){
+            list.add(i, 0);
+        }
+        return list;
+    }
+
+    private ArrayList<String> checkForAnomaly(String appName, String resource, int count, int inBackground, int screenState, int screenOrientation, int closeToObject){
+        ArrayList<String> results = new ArrayList<>();
+        //RULESETS
+        //Prüfbedingung (Whatsapp und Microfon gibt Anomalie)
+        if ((appName.equals("com.whatsapp")) && (resource.equals("RECORD_AUDIO"))) {
+            results.add("1");
+            results.add("TEST ANOMALY");
+            return results;
+        }
+        //App im Hintergrund, kritische Resource
+        if((inBackground == 0) && criticalRecources.contains(resource)){
+            results.add("1");
+            results.add("App was in Background but accessed crit. Resource");
+            return results;
+        }
+        if((screenOrientation < -3) && (screenState == 0)){
+            results.add("1");
+            results.add("Resource was accesed while Display seemed to lie on Desk");
+            return results;
+        }
+        if((criticalRecources.contains(resource)) && (screenState == 0) && !(closeToObject == 0) && !(resource.equals("RECORD_AUDIO"))){
+            results.add("1");
+            results.add("Screen was off and crit. Resource was used (You seemed not to phone)");
+            return results;
+        }
+        if(resource.equals("ACTIVATE_VPN")){
+            results.add("1");
+            results.add("The App activated a VPN, your Internet traffic may not be save");
+            return results;
+        }
+        if(inBackground == -1){
+            results.add("1");
+            results.add("Your android system did not register this app as running!");
+            return results;
+        }
+        results.add("0");
+        results.add("");
+        return results;
+    }
+
+    private void collectResInfos(ArrayList<String> names){
+        int resCount;
+        String insert;
+        List<String> resources;
+        ArrayList<Integer> temp;
+        ArrayList<String> anomaly;
+        int inBackground = 0;
+        int screenState = 0;
+        int screenOrientation = 0;
+        int closeToObject = 0;
+        for(int i = 0; i < names.size(); i++) {
+            resources = sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.OPID_NAME + " FROM " + SqliteDBStructure.APPS_USED_RESOURCES + " WHERE " + SqliteDBStructure.APP_NAME + " = '" + names.get(i) +"';");
+
+            for(int j = 0; j < resources.size(); j++){
+                resCount = sqliteDBHelper.entries("SELECT * FROM " + SqliteDBStructure.DATA_AGGREGATE + " WHERE " + SqliteDBStructure.APP_NAME + " = '" + names.get(i) + "' " + " AND " + SqliteDBStructure.OPID_NAME + " = '" + resources.get(j) + "';");
+                temp = sqliteDBHelper.query_select_to_int("SELECT " + SqliteDBStructure.RUNNING + " FROM " + SqliteDBStructure.DATA_AGGREGATE + " WHERE " + SqliteDBStructure.APP_NAME + " = '" + names.get(i) + "' " + " AND " + SqliteDBStructure.OPID_NAME + " = '" + resources.get(j) + "';");
+                if (temp != null) {
+                    inBackground = temp.get(0);
+                }
+                temp = sqliteDBHelper.query_select_to_int("SELECT " + SqliteDBStructure.SCREEN_STATE + " FROM " + SqliteDBStructure.DATA_AGGREGATE + " WHERE " + SqliteDBStructure.APP_NAME + " = '" + names.get(i) + "' " + " AND " + SqliteDBStructure.OPID_NAME + " = '" + resources.get(j) + "';");
+                if (temp != null) {
+                    screenState = temp.get(0);
+                }
+                temp = sqliteDBHelper.query_select_to_int("SELECT " + SqliteDBStructure.SCREEN_ORIENTATION + " FROM " + SqliteDBStructure.DATA_AGGREGATE + " WHERE " + SqliteDBStructure.APP_NAME + " = '" + names.get(i) + "' " + " AND " + SqliteDBStructure.OPID_NAME + " = '" + resources.get(j) + "';");
+                if (temp != null) {
+                    screenOrientation = temp.get(0);
+                }
+                temp = sqliteDBHelper.query_select_to_int("SELECT " + SqliteDBStructure.CLOSE_TO_OBJECT + " FROM " + SqliteDBStructure.DATA_AGGREGATE + " WHERE " + SqliteDBStructure.APP_NAME + " = '" + names.get(i) + "' " + " AND " + SqliteDBStructure.OPID_NAME + " = '" + resources.get(j) + "';");
+                if (temp != null) {
+                    closeToObject = temp.get(0);
+                }
+                anomaly = checkForAnomaly(names.get(i), resources.get(j), resCount, inBackground, screenState, screenOrientation, closeToObject);
+                insert = "INSERT INTO " + SqliteDBStructure.DATA_ANALYZING + " VALUES('"+ names.get(i) +"', '"+ resources.get(j) +"', "+ resCount + ", " + Integer.parseInt(anomaly.get(0)) + ", '" + actTimeStamp + "', '"+ anomaly.get(1) +"');";
+                //Log.d("Print inserts",insert);
+                sqliteDBHelper.query(insert);
+            }
+        }
+
+        sqliteDBHelper.write_data_analyzing_to_file();
+    }
+
+    private void sendRawData(){
+        ArrayList<ArrayList<String>> rawData = new ArrayList<>();
+        rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.APP_NAME + " FROM " + SqliteDBStructure.DATA_AGGREGATE+ ";"));
+        rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.OPID_NAME + " FROM " + SqliteDBStructure.DATA_AGGREGATE+ ";"));
+        rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.TIME_STAMP + " FROM " + SqliteDBStructure.DATA_AGGREGATE+ ";"));
+        rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.RUNNING + " FROM " + SqliteDBStructure.DATA_AGGREGATE+ ";"));
+        rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.SCREEN_STATE + " FROM " + SqliteDBStructure.DATA_AGGREGATE+ ";"));
+        rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.SCREEN_ORIENTATION + " FROM " + SqliteDBStructure.DATA_AGGREGATE+ ";"));
+        rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.CLOSE_TO_OBJECT + " FROM " + SqliteDBStructure.DATA_AGGREGATE+ ";"));
+        for(int i = 0; i < rawData.get(0).size(); i++){
+            MyClient.POST_rawdata(rawData.get(0).get(i), rawData.get(1).get(i), rawData.get(2).get(i), rawData.get(3).get(i), rawData.get(4).get(i), rawData.get(5).get(i), rawData.get(6).get(i), actTimeStamp);
+        }
+    }
+
+    @Override
+    protected void onHandleIntent(Intent intent) {
+        start_scan_time.setTime(intent.getLongExtra(MainActivity.IDENTIFIER, System.currentTimeMillis()));
+        actTimeStamp = Utility.dateTime(new Date());
+        startAnalysis();
+    }
+}

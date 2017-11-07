@@ -1,0 +1,150 @@
+package com.op_dfat;
+
+import android.app.IntentService;
+import android.content.Context;
+import android.content.Intent;
+import android.database.Cursor;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkInfo;
+import android.util.Log;
+import android.widget.Toast;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+
+/**
+ * Created by Marvin on 12.12.2016.
+ */
+
+public class Datamining {
+
+    ArrayList<String> pkgNames;
+    ArrayList<Integer> anomalies;
+
+    SqliteDBHelper sqliteDBHelper;
+    public String actTimeStamp;
+    Date start_scan_time, stop_scan_time;
+
+    private static Datamining datamining;
+    Context context;
+
+    private Datamining(Context context) {
+        sqliteDBHelper = SqliteDBHelper.getInstance(context);
+        start_scan_time = new Date();
+        stop_scan_time = new Date();
+        this.context = context;
+    }
+
+    public static Datamining getInstance (Context context) {
+        if (datamining == null) {
+            datamining = new Datamining(context);
+        }
+        return datamining;
+    }
+
+    public void startAnalysis(long analysis_start, long analysis_stop) {
+        start_scan_time.setTime(analysis_start);
+        stop_scan_time.setTime(analysis_stop);
+
+        actTimeStamp = Utility.dateTime(stop_scan_time);
+
+        if (Utility.isInternetAvailable(context)) {
+            sendRawData();
+        } else {
+            Toast.makeText(context, "No Internet Connection available\nThe Scan Data will be saved locally", Toast.LENGTH_SHORT);
+            saveScanImage();
+        }
+        evaluateRawData();
+        sendAppNames();
+        insertCurrentScanTime();
+    }
+
+    private void insertCurrentScanTime () {
+        sqliteDBHelper.insert_into_scan_times_logged(stop_scan_time);
+    }
+
+    private void sendAppNames() {
+        ArrayList<String> names =  sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.APP_NAME + " FROM " + SqliteDBStructure.APPS_LOGGED);
+        for(int i = 0; i < names.size(); i++){
+            MyClient.sendAppName(names.get(i));
+        }
+    }
+
+    private void evaluateRawData () {
+        ArrayList<String> anomaly;
+        int appState = 0, screenState = 0, screenOrientation = 0, closeToObject = 0, resourceCount = 0;
+        double scanDuration;
+        String appName = "", resource = "", lastUsed = "";
+
+        Cursor cursor = sqliteDBHelper.get_data("SELECT * FROM " + SqliteDBStructure.DATA_AGGREGATE + " ORDER BY " + SqliteDBStructure.APP_NAME);
+        if (cursor != null) {
+            cursor.moveToFirst();
+        }
+
+        while (!cursor.isAfterLast()) {
+            appName = cursor.getString(cursor.getColumnIndexOrThrow(SqliteDBStructure.APP_NAME));
+            resource = cursor.getString(cursor.getColumnIndexOrThrow(SqliteDBStructure.OPID_NAME));
+            lastUsed = cursor.getString(cursor.getColumnIndexOrThrow(SqliteDBStructure.TIME_STAMP));
+            appState = cursor.getInt(cursor.getColumnIndexOrThrow(SqliteDBStructure.RUNNING));
+            screenState = cursor.getInt(cursor.getColumnIndexOrThrow(SqliteDBStructure.SCREEN_STATE));
+            screenOrientation = cursor.getInt(cursor.getColumnIndexOrThrow(SqliteDBStructure.SCREEN_ORIENTATION));
+            closeToObject = cursor.getInt(cursor.getColumnIndexOrThrow(SqliteDBStructure.CLOSE_TO_OBJECT));
+
+            resourceCount = sqliteDBHelper.entries("SELECT * FROM " + SqliteDBStructure.DATA_AGGREGATE + " WHERE " + SqliteDBStructure.APP_NAME + " = '" + appName + "' " + " AND " + SqliteDBStructure.OPID_NAME + " = '" + resource + "';");
+
+            //Scan duration in Minutes
+            scanDuration = (((double) stop_scan_time.getTime() + (double) start_scan_time.getTime()) / 1000 )/ 60;
+
+            anomaly = RuleSet.checkForAnomaly(appName, resource, resourceCount, appState, screenState, screenOrientation, closeToObject, scanDuration, context);
+
+            //Send anomaly to server
+            if (Utility.isInternetAvailable(context)) {
+                if (anomaly.get(0).equals("1"))
+                    MyClient.POST_Anomaly(appName, resource, anomaly.get(1), "0");
+            } else {
+                if (anomaly.get(0).equals("1"))
+                    saveAnomaliesImage(appName, resource, anomaly.get(1), 0);
+            }
+
+            sqliteDBHelper.insert_into_data_analyzing(appName, resource, resourceCount, anomaly.get(0), actTimeStamp, anomaly.get(1), lastUsed, 0);
+            sqliteDBHelper.insert_into_apps_logged_at_scan_time(appName, actTimeStamp);
+            cursor.moveToNext();
+        }
+    }
+
+    private void sendRawData(){
+        ArrayList<ArrayList<String>> rawData = new ArrayList<>();
+        rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.APP_NAME + " FROM " + SqliteDBStructure.DATA_AGGREGATE+ ";"));
+        rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.OPID_NAME + " FROM " + SqliteDBStructure.DATA_AGGREGATE+ ";"));
+        rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.TIME_STAMP + " FROM " + SqliteDBStructure.DATA_AGGREGATE+ ";"));
+        rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.RUNNING + " FROM " + SqliteDBStructure.DATA_AGGREGATE+ ";"));
+        rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.SCREEN_STATE + " FROM " + SqliteDBStructure.DATA_AGGREGATE+ ";"));
+        rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.SCREEN_ORIENTATION + " FROM " + SqliteDBStructure.DATA_AGGREGATE+ ";"));
+        rawData.add(sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.CLOSE_TO_OBJECT + " FROM " + SqliteDBStructure.DATA_AGGREGATE+ ";"));
+        for(int i = 0; i < rawData.get(0).size(); i++){
+            MyClient.POST_rawdata(rawData.get(0).get(i), rawData.get(1).get(i), rawData.get(2).get(i), rawData.get(3).get(i), rawData.get(4).get(i), rawData.get(5).get(i), rawData.get(6).get(i), actTimeStamp);
+        }
+    }
+
+    private void saveScanImage() {
+
+        sqliteDBHelper.query("INSERT OR REPLACE INTO " + SqliteDBStructure.SAVE_SCAN +  " (" +
+                SqliteDBStructure.APP_NAME + ", " +
+                SqliteDBStructure.OPID_NAME + ", " +
+                SqliteDBStructure.TIME_STAMP + ", " +
+                SqliteDBStructure.RUNNING + ", " +
+                SqliteDBStructure.SCREEN_STATE + ", " +
+                SqliteDBStructure.SCREEN_ORIENTATION + ", " +
+                SqliteDBStructure.CLOSE_TO_OBJECT + ") " +
+                " SELECT * FROM " + SqliteDBStructure.DATA_AGGREGATE+ ";");
+        sqliteDBHelper.query("UPDATE " + SqliteDBStructure.SAVE_SCAN + " SET " + SqliteDBStructure.SCAN_TIME + " = '" + actTimeStamp +"' " + " WHERE " + SqliteDBStructure.SCAN_TIME + " = null");
+    }
+
+    private void saveAnomaliesImage(String appName, String resource, String anomalyReason, int fromUser) {
+        sqliteDBHelper.query("INSERT OR REPLACE INTO " + SqliteDBStructure.SAVE_ANOMALIES + " VALUES (" + "'" + appName + "'" +", " + "'" + resource +  "'" + ", " +  "'" + anomalyReason + "'" + ", " + fromUser + ");");
+    }
+}

@@ -1,0 +1,339 @@
+package com.op_dfat;
+
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.database.Cursor;
+import android.os.AsyncTask;
+import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
+import android.text.Html;
+import android.text.InputType;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.WindowManager;
+import android.widget.AdapterView;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.ListView;
+import android.widget.TextView;
+import android.widget.Toast;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class Activity_app_details extends AppCompatActivity {
+
+    ListView listView;
+    String appName;
+    String packageName;
+    String timestamp;
+    ArrayList<String> tmp = new ArrayList<>();
+
+    SqliteDBHelper sqliteDBHelper;
+    AlertDialog alertDialog;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_app_details);
+
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN);
+        sqliteDBHelper = SqliteDBHelper.getInstance(this);
+
+        Intent intent = getIntent();
+        appName = intent.getStringExtra("appName");
+        packageName = intent.getStringExtra("packageName");
+        timestamp = intent.getStringExtra("timestamp");
+
+        listView = (ListView) findViewById(R.id.listViewResources);
+
+        createList();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if(alertDialog != null) {
+            alertDialog.dismiss();
+            alertDialog = null;
+        }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_options, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_settings) {
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void createList(){
+
+        final ImageView iv = (ImageView) findViewById(R.id.appDetailIcon);
+        final TextView tv = (TextView) findViewById(R.id.appDetailName);
+        final Button reportButton = (Button) findViewById(R.id.buttonMassReport);
+
+        new AsyncTask<Void, Void, List<Resources>>() {
+
+            @Override
+            protected void onPreExecute() {
+                super.onPreExecute();
+            }
+
+            @Override
+            protected List<Resources> doInBackground(Void... voids) {
+                Map<String, Integer> resourceMap = getResourceAndCount(packageName);
+
+                final List<Resources> resources = new ArrayList<>();
+
+                for (Map.Entry<String, Integer> entry: resourceMap.entrySet()) {
+                    resources.add(new Resources(entry.getValue().toString(), entry.getKey(), resourceIsAnomaly(packageName, entry.getKey())));
+                }
+
+                Collections.sort(resources);
+
+                return resources;
+            }
+
+            @Override
+            protected void onPostExecute(final List<Resources> resources) {
+
+                iv.setImageDrawable(Utility.getAppIcon(getApplicationContext(), packageName));
+                tv.setText(appName);
+
+                final Adapter_App_Details adapter = new Adapter_App_Details(getApplicationContext(), R.id.activity_app_details, resources, packageName);
+
+                // Assign adapter to ListView
+                listView.setAdapter(adapter);
+
+                adapter.notifyDataSetChanged();
+
+                // ListView Item Click Listener
+                listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+
+                    @Override
+                    public void onItemClick(AdapterView<?> parent, View view, final int position, long id) {
+
+                        String msg;
+
+                        alertDialog = new AlertDialog.Builder(Activity_app_details.this).create();
+
+                        alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, getString(R.string.buttonCancel),
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.dismiss();
+                                    }
+                                });
+
+                        // sets up the dialog and onClick action when the resource is anomalous
+                        if (resources.get(position).anomalous) {
+                            alertDialog.setTitle(R.string.anomalousResourceDialogTitle);
+                            msg = "Resource accessed at: \n\n";
+                            ArrayList<String> accessTimes = getAnomalyTimes(packageName, resources.get(position).resource);
+                            for (String accessTime: accessTimes) {
+                                String reason = getReasons(packageName, resources.get(position).resource, accessTime);
+                                msg += accessTime.substring(11) + " \n\t" + (reason.equals("")?"not anomalous": reason) + "\n";
+                            }
+
+                            msg += "\n" + getString(R.string.anomalousResourceDeReportText);
+                            alertDialog.setMessage(msg);
+                            alertDialog.setIcon(R.drawable.boo);
+
+                            // text input for the explanation from the user why he reported this resource
+                            final EditText input = new EditText(Activity_app_details.this);
+                            input.setInputType(InputType.TYPE_CLASS_TEXT);
+
+                            alertDialog.setView(input);
+                            alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, getString(R.string.buttonDeReport),
+                                    new DialogInterface.OnClickListener() {
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            String reasonForReporting = input.getText().toString();
+                                            //MyClient.POST_Anomaly(packageName, resources[position].resource, reasonForReporting, true);
+                                        }
+                                    });
+                            alertDialog.show();
+                        }
+                    }
+                });
+
+
+                reportButton.setOnClickListener(new View.OnClickListener() {
+
+                    int resourceCount = listView.getAdapter().getCount();
+                    int[] arrayIsChecked = new int[resourceCount];
+
+                    @Override
+                    public void onClick(View v) {
+
+                        boolean checkedAnything = false;
+
+                        for (int i = 0; i < resourceCount; i++) {
+
+                            CheckBox cb = (CheckBox) listView.getChildAt(i).findViewById(R.id.checkboxMassReport);
+                            if(cb.isChecked()){
+                                arrayIsChecked[i] = 1;
+                                checkedAnything = true;
+                            }else{
+                                arrayIsChecked[i] = 0;
+                            }
+                        }
+                        AlertDialog alertDialog = new AlertDialog.Builder(Activity_app_details.this).create();
+
+                        alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, getString(R.string.buttonCancel),
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.dismiss();
+                                    }
+                                });
+
+                        if (checkedAnything) {
+
+                            String msg = "";
+                            final EditText input = new EditText(Activity_app_details.this);
+                            input.setInputType(InputType.TYPE_CLASS_TEXT);
+                            alertDialog.setView(input);
+
+                            alertDialog.setTitle(getString(R.string.massReportResourceDialogTitle));
+
+                            for (int j = 0; j < arrayIsChecked.length; j++) {
+                                if (arrayIsChecked[j] == 1) {
+                                    ArrayList<String> anomalyTimes = getAnomalyTimes(packageName, resources.get(j).resource);
+                                    for (String anomalyTime : anomalyTimes) {
+                                        msg += anomalyTime.substring(11) + "\n";
+                                        if (resources.get(j).anomalous) {
+                                            msg += "\t" + getReasons(packageName, resources.get(j).resource, anomalyTime) + "\n";
+                                        } else {
+                                            msg += "\t" + "no anomalous access" + "\n";
+                                        }
+                                    }
+                                }
+                            }
+                            msg += "\n" + getString(R.string.massReportResourceDialogText);
+                            alertDialog.setMessage(msg);
+
+                            alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, getString(R.string.buttonReport),
+                                    new DialogInterface.OnClickListener() {
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            String reasonForReporting = input.getText().toString();
+                                            for (int j = 0; j < arrayIsChecked.length; j++) {
+                                                if (arrayIsChecked[j] == 1) {
+                                                    if(Utility.isInternetAvailable(getApplicationContext())) {
+                                                        Log.d("activity_app_details", "onClick: internet ist da und die Ressourcen werden reported");
+                                                        MyClient.POST_Anomaly(packageName, resources.get(j).resource, reasonForReporting, "1");
+                                                        updateReported(packageName, resources.get(j).resource);
+                                                    }
+                                                }
+                                            }
+                                            // TODO: transmission of the POST has to be checked
+                                            Toast.makeText(getApplicationContext(), getString(R.string.toastTransmissionConfirmation), Toast.LENGTH_SHORT).show();
+                                            createList();
+                                        }
+                                    });
+                        }else{
+                            alertDialog.setTitle(R.string.noCheckboxSelectedTitle);
+                            alertDialog.setMessage(getString(R.string.noCheckboxSelectedText));
+                        }
+                        alertDialog.show();
+                    }
+                });
+            }
+
+        }.execute();
+    }
+
+    private Map<String, Integer> getResourceAndCount(String packageName) {
+        Cursor cursor = sqliteDBHelper.get_data("SELECT " + SqliteDBStructure.RESOURCE + ", " + SqliteDBStructure.COUNT + " FROM " + SqliteDBStructure.DATA_ANALYZING + " WHERE " + SqliteDBStructure.SCAN_TIME + " = '" + timestamp + "' AND " + SqliteDBStructure.APP_NAME + " = '" + packageName + "' ORDER BY " + SqliteDBStructure.COUNT + " DESC");
+
+        Map<String, Integer> resourceMap = new HashMap<>();
+
+        if (cursor != null) {
+            cursor.moveToFirst();
+        }
+
+        while (!cursor.isAfterLast()) {
+            if (!resourceMap.containsKey(cursor.getString(cursor.getColumnIndexOrThrow(SqliteDBStructure.RESOURCE)))) {
+                resourceMap.put(cursor.getString(cursor.getColumnIndexOrThrow(SqliteDBStructure.RESOURCE)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(SqliteDBStructure.COUNT)));
+            }
+            cursor.moveToNext();
+        }
+
+       return resourceMap;
+    }
+
+    public void settingsButton(MenuItem item) {
+        Intent intent = new Intent(getApplicationContext(), SettingsPage.class);
+        startActivity(intent);
+    }
+
+    private boolean resourceIsAnomaly(String packageName, String res){
+        tmp = sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.ANOMALY + " FROM " + SqliteDBStructure.DATA_ANALYZING + " WHERE " + SqliteDBStructure.SCAN_TIME + " = '" + timestamp + "' AND " + SqliteDBStructure.APP_NAME + " = '" + packageName + "' AND " + SqliteDBStructure.RESOURCE + " = '"+res+"'");
+        return tmp.contains("1");
+    }
+
+    private ArrayList<String> getAnomalyText(String packageName, String res){
+        tmp = sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.ANOMALY_REASON + " FROM " + SqliteDBStructure.DATA_ANALYZING + " WHERE " + SqliteDBStructure.SCAN_TIME + " = '" + timestamp + "' AND " + SqliteDBStructure.APP_NAME + " = '" + packageName + "' AND " + SqliteDBStructure.RESOURCE + " = '"+res+"'");
+        return tmp;
+    }
+
+    private ArrayList<String> getAnomalyTimes(String packageName, String res){
+        tmp = sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.RESOURCE_ACCESS_TIME + " FROM " + SqliteDBStructure.DATA_ANALYZING + " WHERE " + SqliteDBStructure.SCAN_TIME + " = '" + timestamp + "' AND " + SqliteDBStructure.APP_NAME + " = '" + packageName + "' AND " + SqliteDBStructure.RESOURCE + " = '"+res+"' ORDER BY DATETIME('" + SqliteDBStructure.RESOURCE_ACCESS_TIME + "') DESC");
+        return tmp;
+    }
+
+    private void updateReported(String packageName, String resource) {
+        sqliteDBHelper.query("UPDATE " + SqliteDBStructure.DATA_ANALYZING + " SET " + SqliteDBStructure.REPORTED + " = 1 WHERE " + SqliteDBStructure.APP_NAME + " = '" + packageName + "' AND " + SqliteDBStructure.RESOURCE + " = '" + resource + "'");
+    }
+
+    private String getReasons (String packageName, String res, String accessTime) {
+        tmp = sqliteDBHelper.query_select_list("SELECT " + SqliteDBStructure.ANOMALY_REASON + " FROM " + SqliteDBStructure.DATA_ANALYZING + " WHERE " + SqliteDBStructure.SCAN_TIME + " = '" + timestamp + "' AND " + SqliteDBStructure.APP_NAME + " = '" + packageName + "' AND " + SqliteDBStructure.RESOURCE + " = '"+res+"'" + " AND " + SqliteDBStructure.RESOURCE_ACCESS_TIME + " = '" + accessTime + "'");
+        return tmp == null || tmp.isEmpty()? "": tmp.get(0);
+    }
+
+    private void dereportApp(String packageNameName, String res, String reason){
+        MyClient.POST_Anomaly(packageNameName, res, reason, "-1");
+    }
+
+    public void getHelp(MenuItem item){
+
+    }
+
+    public void getAboutUs(MenuItem item){
+
+        android.support.v7.app.AlertDialog.Builder builder = new android.support.v7.app.AlertDialog.Builder(this);
+
+        builder.setTitle("Impressum");
+        android.content.res.Resources res = getResources();
+
+        String text = String.format(res.getString(R.string.ImpressumText));
+
+        builder.setMessage(Html.fromHtml(text)).show();
+
+    }
+
+    public void getAppsToScan(MenuItem item){
+        Intent intent = new Intent(getApplicationContext(), Activity_Apps_to_scan.class);
+        startActivity(intent);
+    }
+
+}

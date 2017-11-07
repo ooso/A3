@@ -1,0 +1,198 @@
+package com.dfat.fakerinc.guidummy;
+
+import android.Manifest;
+import android.app.AppOpsManager;
+import android.app.usage.UsageStats;
+import android.app.usage.UsageStatsManager;
+import android.content.ContentValues;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+import android.net.Uri;
+import android.os.Environment;
+import android.provider.Settings;
+import android.support.v7.app.AlertDialog;
+import android.util.JsonWriter;
+import android.util.Log;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+
+import org.json.*;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+
+
+
+/**
+ * Created by arrigo on 11/24/16.
+ */
+
+public class SqliteDBHelper extends SQLiteOpenHelper {
+
+    // static reference to this instance of the class
+    public static SqliteDBHelper sqliteDBHelper_instance = null;
+    // reference to the respective activity context
+    private Context context;
+    // current version of the database (any changes to the DB -> update version number)
+    public static int VERSION = 13;
+    // databses related variables
+    public static final String DATABASE_NAME = "DFAT.db";
+    public static final String TABLE_NAME = "data_analyzing";
+    public static final String APPNAME = "app_name";
+    public static final String TIME_STAMP = "last_used";
+    public static final String OPID = "opid_name";
+    public static final String RUNNING = "app_running";
+    public final String INIT_QUERY = "CREATE TABLE " + TABLE_NAME
+            + " (" + APPNAME + " VARCHAR(50), "
+            + OPID + " VARCHAR(50), "
+            + TIME_STAMP + " DATETIME, "
+            + RUNNING + " NUMERIC, "
+            + "PRIMARY KEY (" + APPNAME + ", " + TIME_STAMP + ", " + OPID + ", " + RUNNING + "));";
+    public final String GET_DATA_QUERY = "SELECT * FROM " + TABLE_NAME /*+ " ORDER BY datetime(" + TIME_STAMP + ") DESC LIMIT " + entries() + ";"*/;
+    public final String DELETE_DB_QUERY = "DROP TABLE IF EXISTS " + TABLE_NAME;
+
+    // private constructor. DB is initialiazed through a factory method
+    private SqliteDBHelper(Context context, String name, SQLiteDatabase.CursorFactory factory, int version) {
+        super(context, name, factory, version);
+        this.context = context;
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase sqLiteDatabase) {
+        sqLiteDatabase.execSQL(INIT_QUERY);
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase sqLiteDatabase, int i, int i1) {
+        sqLiteDatabase.execSQL(DELETE_DB_QUERY);
+        onCreate(sqLiteDatabase);
+    }
+
+    // factory method, which initializes this class
+    public static SqliteDBHelper getInstance(Context ctx) {
+        // only one instance of this class can exists
+        if (sqliteDBHelper_instance == null) {
+            sqliteDBHelper_instance = new SqliteDBHelper(ctx.getApplicationContext(), DATABASE_NAME, null, VERSION);
+        }
+        return sqliteDBHelper_instance;
+    }
+
+    // converter method, which converts the time of a Date Object into a string
+    private String dateTime(Date time_stamp) {
+        if (time_stamp == null) {
+            Date d = new Date();
+            SimpleDateFormat dateFormat = new SimpleDateFormat(
+                    "yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+            return dateFormat.format(d);
+        } else {
+            SimpleDateFormat dateFormat = new SimpleDateFormat(
+                    "yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+            return dateFormat.format(time_stamp);
+        }
+    }
+
+    // insert data into the DB
+    public void insert_into_DB(String opid, Date _timestamp, String packageName, int isRunning) {
+        // Gets the data repository in write mode
+        SQLiteDatabase db = this.getWritableDatabase();
+        // Create a new map of values, where column names are the keys
+        ContentValues contentValues = new ContentValues();
+
+        contentValues.put(OPID, opid);
+        contentValues.put(TIME_STAMP, dateTime(_timestamp));
+        contentValues.put(APPNAME, packageName);
+        contentValues.put(RUNNING, isRunning);
+
+        db.beginTransaction();
+        try {
+            db.insertWithOnConflict(TABLE_NAME, null, contentValues, SQLiteDatabase.CONFLICT_REPLACE);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    // get all the content from DB
+    public Cursor get_data() {
+        SQLiteDatabase db = this.getWritableDatabase();
+        Cursor cursor = db.rawQuery(GET_DATA_QUERY, null);
+        return cursor;
+    }
+
+    // get the current amount of rows in the DB
+    public int entries() {
+        SQLiteDatabase db = this.getWritableDatabase();
+        Cursor cursor = db.rawQuery(GET_DATA_QUERY, null);
+        return cursor.getCount();
+    }
+
+    // write DB content to the text file
+    public void DBtoText() {
+        JSONArray resultSet = new JSONArray();
+        String resultString = null;
+        Cursor cursor = get_data();
+        cursor.moveToFirst();
+        while (!cursor.isAfterLast()) {
+
+            int totalColumn = cursor.getColumnCount();
+            JSONObject rowObject = new JSONObject();
+
+            for (int i = 0; i < totalColumn; i++) {
+                if (cursor.getColumnName(i) != null) {
+                    try {
+                        if (cursor.getString(i) != null) {
+                            rowObject.put(cursor.getColumnName(i), cursor.getString(i));
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            try {
+                resultSet.put(rowObject);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            cursor.moveToNext();
+        }
+        cursor.close();
+
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        JsonParser jp = new JsonParser();
+        try {
+            JsonElement je = jp.parse(resultSet.toString(4));
+            resultString = gson.toJson(je);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        try {
+            File dir = new File(Environment.getExternalStorageDirectory().getAbsolutePath());
+            if (!dir.exists())
+                dir.mkdir();
+            FileWriter file = new FileWriter(dir+ "/DFAT_File.txt");
+            file.write(resultString);
+            file.flush();
+            file.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        File file= new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/DFAT_File.txt");
+        Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        intent.setData(Uri.fromFile(file));
+        context.sendBroadcast(intent);
+    }
+}

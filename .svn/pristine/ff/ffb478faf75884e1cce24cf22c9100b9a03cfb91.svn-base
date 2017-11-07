@@ -1,0 +1,155 @@
+package com.op_dfat;
+
+import android.content.Context;
+import android.content.DialogInterface;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.v7.app.AlertDialog;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.Filter;
+import android.widget.Filterable;
+import android.widget.ImageButton;
+import android.widget.TextView;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class Adapter_Scans extends ArrayAdapter<String> implements Filterable {
+
+    Context context;
+    Fragment_history fragment;
+    private List<String> timestamp;
+    private List<String> filtered = new ArrayList<>();
+    FilterScans filter;
+
+    public Adapter_Scans(Context context, int layoutResourceId, List<String> timestamp, Fragment_history fragment) {
+        super(context, layoutResourceId);
+        this.timestamp = timestamp;
+        this.context = context;
+        this.fragment = fragment;
+        filtered = this.timestamp;
+    }
+
+    @Override
+    public View getView(final int position, View convertView, ViewGroup parent) {
+
+        View rowView = convertView;
+        ViewHolder viewHolder;
+
+        if (rowView == null) {
+            LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            rowView = inflater.inflate(R.layout.adapter_scan, parent, false);
+
+            viewHolder = new ViewHolder();
+
+            viewHolder.textView = (TextView) rowView.findViewById(R.id.scanTimeStamp);
+            viewHolder.button = (ImageButton) rowView.findViewById(R.id.buttonDeleteScan);
+
+            rowView.setTag(viewHolder);
+        } else {
+            viewHolder = (ViewHolder) rowView.getTag();
+        }
+
+        viewHolder.textView.setText(getItem(position));
+
+        // Deletes the scan onClick on the position and refreshes the list
+        viewHolder.button.setOnClickListener(new View.OnClickListener(){
+
+            @Override
+            public void onClick(View v) {
+                final AlertDialog alertDialog = new AlertDialog.Builder(v.getRootView().getContext()).create();
+                alertDialog.setTitle("Confirmation");
+                alertDialog.setMessage("Do you really want to delete this scan?");
+                alertDialog.setCancelable(true);
+                alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, "Yes", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        deleteOlderScan(timestamp.get(position));
+                        fragment.getScanList();
+                    }
+                });
+                alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, "Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        alertDialog.dismiss();
+                    }
+                });
+                alertDialog.show();
+
+            }
+        });
+        viewHolder.button.setFocusable(false);
+        viewHolder.button.setFocusableInTouchMode(false);
+
+        return rowView;
+    }
+
+
+    private void deleteOlderScan (String date) {
+        date = Utility.formatSimpleFormatToStandardDateTime(date);
+        SqliteDBHelper.getInstance(getContext()).query("DELETE FROM " + SqliteDBStructure.SCAN_TIMES_LOGGED + " WHERE " + SqliteDBStructure.SCAN_TIME + " = '" + date + "'");
+        SqliteDBHelper.getInstance(getContext()).query("DELETE FROM " + SqliteDBStructure.DATA_ANALYZING + " WHERE " + SqliteDBStructure.SCAN_TIME + " = '" + date + "'");
+    }
+
+    @Override
+    public int getCount() {
+        return filtered.size();
+    }
+
+    @Nullable
+    @Override
+    public String getItem(int position) {
+        return filtered.get(position);
+    }
+
+    @NonNull
+    @Override
+    public Filter getFilter() {
+        if (filter == null) {
+            filter = new FilterScans();
+        }
+        return filter;
+    }
+
+    private class FilterScans extends Filter {
+
+
+        @Override
+        protected FilterResults performFiltering(CharSequence charSequence) {
+
+            FilterResults results = new FilterResults();
+
+            if (charSequence != null && charSequence.length() != 0) {
+                List<String> resultList = new ArrayList<>();
+                for (String t: timestamp) {
+                    if (t.contains(charSequence.toString())) {
+                        resultList.add(t);
+                    }
+                }
+
+                results.count = resultList.size();
+                results.values = resultList;
+            } else {
+                results.count = timestamp.size();
+                results.values = timestamp;
+            }
+            return results;
+        }
+
+        @Override
+        protected void publishResults(CharSequence charSequence, FilterResults filterResults) {
+            filtered = (List<String>) filterResults.values;
+
+            notifyDataSetChanged();
+        }
+    }
+
+    private static class ViewHolder {
+        TextView textView;
+        ImageButton button;
+    }
+
+}

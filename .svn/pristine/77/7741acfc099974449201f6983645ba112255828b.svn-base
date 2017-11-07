@@ -1,0 +1,150 @@
+package com.op_dfat;
+
+import android.content.Context;
+import android.database.sqlite.SQLiteDatabase;
+import android.graphics.drawable.Drawable;
+import android.net.Uri;
+import android.os.Bundle;
+import android.support.v4.app.Fragment;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ListView;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import static java.lang.Integer.parseInt;
+
+import static android.content.ContentValues.TAG;
+import static com.op_dfat.SqliteDBStructure.APP_NAME;
+import static com.op_dfat.SqliteDBStructure.COUNT;
+import static com.op_dfat.SqliteDBStructure.RESOURCE;
+import static com.op_dfat.SqliteDBStructure.DATA_ANALYZING;
+import static com.op_dfat.SqliteDBStructure.TIME_STAMP;
+
+
+
+/**
+ * A simple {@link Fragment} subclass.
+ * Activities that contain this fragment must implement the
+ * {@link Fragment_old_apps.OnFragmentInteractionListener} interface
+ * to handle interaction events.
+ * Use the {@link Fragment_old_apps#newInstance} factory method to
+ * create an instance of this fragment.
+ */
+public class Fragment_old_apps extends Fragment {
+    // TODO: Rename parameter arguments, choose names that match
+    // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
+    private static final String ARG_PARAM1 = "param1";
+    private static final String ARG_PARAM2 = "param2";
+
+    // TODO: Rename and change types of parameters
+    private String mParam1;
+    private String mParam2;
+
+    private OnFragmentInteractionListener mListener;
+    private ListView lv;
+
+    public Fragment_old_apps() {
+        // Required empty public constructor
+    }
+
+    /**
+     * Use this factory method to create a new instance of
+     * this fragment using the provided parameters.
+     *
+     * @param param1 Parameter 1.
+     * @param param2 Parameter 2.
+     * @return A new instance of fragment Fragment_old_apps.
+     */
+    // TODO: Rename and change types and number of parameters
+    public static Fragment_old_apps newInstance(String param1, String param2) {
+        Fragment_old_apps fragment = new Fragment_old_apps();
+        Bundle args = new Bundle();
+        args.putString(ARG_PARAM1, param1);
+        args.putString(ARG_PARAM2, param2);
+        fragment.setArguments(args);
+        return fragment;
+    }
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        if (getArguments() != null) {
+            mParam1 = getArguments().getString(ARG_PARAM1);
+            mParam2 = getArguments().getString(ARG_PARAM2);
+        }
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        // Inflate the layout for this fragment
+        View view = inflater.inflate(R.layout.fragment_old_apps, container, false);
+
+        SqliteDBHelper db = SqliteDBHelper.getInstance(null);
+
+        String timestamp = getArguments().getString("timestamp");
+        // TODO hier müssen die Apps mit ihren anderen Attributen sinnvoll über SQL Abfragen geholt werden
+        String appCount = db.query_select_string("SELECT COUNT("+ APP_NAME +") FROM "+ DATA_ANALYZING +" WHERE '"+ timestamp +"' = "+ TIME_STAMP);
+        Apps apps_data[] = new Apps[parseInt(appCount)];
+        for(int i = 0; i < parseInt(appCount); i++){
+            // timestamp that we are filtering the apps by
+
+            String appName = db.query_select_string("SELECT "+ APP_NAME +" FROM "+ DATA_ANALYZING +" WHERE '"+ timestamp +"' = "+ TIME_STAMP);
+            Drawable icon = Utility.getAppIcon(getActivity(), appName);
+            String countString = db.query_select_string("SELECT MAX("+ COUNT +") FROM "+ DATA_ANALYZING +" WHERE '"+ timestamp +"' = "+ TIME_STAMP);
+            String resource = db.query_select_string("SELECT "+ RESOURCE +" FROM "+ DATA_ANALYZING +" WHERE '"+ timestamp +"' = "+ TIME_STAMP);
+            apps_data[i] = new Apps(icon, Utility.packageToAppName(getActivity(), appName), appName, countString, resource, timestamp, 0);
+        }
+
+        Adapter_Apps adapter = new Adapter_Apps(getContext(), R.layout.adapter_apps, apps_data);
+        lv = (ListView) view.findViewById(R.id.listViewApps);
+        lv.setAdapter(adapter);
+        ArrayList<String> arrayList;
+        return view;
+    }
+        /*Function created by default and is called by a button that was deleted
+        // TODO: Rename method, update argument and hook method into UI event
+        public void onButtonPressed(Uri uri) {
+            if (mListener != null) {
+                mListener.onFragmentInteraction(uri);
+            }
+        }
+        */
+        @Override
+        public void onAttach(Context context) {
+            super.onAttach(context);
+            if (context instanceof OnFragmentInteractionListener) {
+                mListener = (OnFragmentInteractionListener) context;
+            } else {
+                throw new RuntimeException(context.toString()
+                        + " must implement OnFragmentInteractionListener");
+            }
+        }
+
+        @Override
+        public void onDetach() {
+            super.onDetach();
+            mListener = null;
+        }
+
+        /**
+         * This interface must be implemented by activities that contain this
+         * fragment to allow an interaction in this fragment to be communicated
+         * to the activity and potentially other fragments contained in that
+         * activity.
+         * <p>
+         * See the Android Training lesson <a href=
+         * "http://developer.android.com/training/basics/fragments/communicating.html"
+         * >Communicating with Other Fragments</a> for more information.
+         */
+    public interface OnFragmentInteractionListener {
+        // TODO: Update argument type and name
+        void onFragmentInteraction(Uri uri);
+    }
+
+
+}

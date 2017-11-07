@@ -1,0 +1,23 @@
+package com.op_dfat;
+
+/**
+ * Created by arrigo on 2/3/17.
+ */
+
+public class AnomalyInfo {
+
+    public String isAnomalous;
+    public String anomalyReason;
+    public String accessTime;
+
+    public AnomalyInfo(String isAnomalous, String anomalyReason, String accessTime) {
+        this.isAnomalous = isAnomalous;
+        this.anomalyReason = anomalyReason;
+        this.accessTime = accessTime;
+    }
+
+    @Override
+    public String toString() {
+        return accessTime + " - " + isAnomalous + "\n";
+    }
+}

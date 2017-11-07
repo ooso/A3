@@ -1,0 +1,71 @@
+package com.op_dfat;
+
+import android.content.Context;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.util.Log;
+
+/**
+ * Created by arrigo on 12/23/16.
+ */
+
+public class MotionSensors implements SensorEventListener {
+    // reference to the Sensor Manager
+    private SensorManager sensorManager;
+    // reference to the Accelerometer Sensor
+    private Sensor accelerometer;
+    // reference to the PRoximity Sensor
+    private Sensor proximity;
+    // static reference to this class
+    private static MotionSensors motionSensors;
+    // reference to the context of the caller class
+    Context context;
+
+    private MotionSensors(Context context) {
+        this.context = context;
+    }
+
+    public static MotionSensors getInstance(Context context) {
+        if (motionSensors == null) {
+            motionSensors = new MotionSensors(context);
+        }
+        return motionSensors;
+    }
+
+    public void startCheckingSensors (Context context) {
+        // get the Sensor Manager
+        sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
+        // get the accelerometer sensor
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        // register the listener to listen to events of the accelerometer sensor
+        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        // get the proximity sensor
+        proximity = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY);
+        // register the listener to listen to events of the proximity sensor
+        sensorManager.registerListener(this, proximity, SensorManager.SENSOR_DELAY_NORMAL);
+    }
+
+    public void stopCheckingMotionSensors () {
+        // unregister all the listeners
+        sensorManager.unregisterListener(this, accelerometer);
+        sensorManager.unregisterListener(this, proximity);
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent sensorEvent) {
+        if (sensorEvent.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            PermissionLogReader.screen_orientation = sensorEvent.values[2];
+        } else if (sensorEvent.sensor.getType() == Sensor.TYPE_PROXIMITY) {
+            PermissionLogReader.closeToObject = sensorEvent.values[0] < proximity.getMaximumRange();
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int i) {
+
+    }
+
+
+}

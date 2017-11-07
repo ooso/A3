@@ -1,0 +1,93 @@
+package com.op_dfat;
+
+import android.content.Context;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.util.Log;
+
+/**
+ * Created by arrigo on 12/23/16.
+ */
+
+public class MotionSensors implements SensorEventListener {
+
+    private static final String TAG = "MotionControlService";
+
+    private float mGZ = 0;//gravity acceleration along the z axis
+    private int mEventCountSinceGZChanged = 0;
+    private static final int MAX_COUNT_GZ_CHANGE = 10;
+
+    boolean mStarted;
+    SensorManager mSensorManager;
+
+    private static MotionSensors motionSensors;
+
+    Context context;
+
+    private MotionSensors(Context context) {
+        this.context = context;
+    }
+
+    public static MotionSensors getInstance(Context context) {
+        if (motionSensors == null) {
+            motionSensors = new MotionSensors(context);
+        }
+        return motionSensors;
+    }
+
+    public void checkMotionSensors (Context context) {
+        if (!mStarted) {
+            mSensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
+
+            mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_GAME);
+
+            mStarted = true;
+        }
+    }
+
+    public void stopCheckingMotionSensors () {
+        if (mStarted) {
+            mSensorManager.unregisterListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER));
+            mStarted = false;
+        }
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent sensorEvent) {
+        int type = sensorEvent.sensor.getType();
+        if (type == Sensor.TYPE_ACCELEROMETER) {
+            float gz = sensorEvent.values[2];
+            if (mGZ == 0) {
+                mGZ = gz;
+            } else {
+                if ((mGZ * gz) < 0) {
+                    mEventCountSinceGZChanged++;
+                    if (mEventCountSinceGZChanged == MAX_COUNT_GZ_CHANGE) {
+                        mGZ = gz;
+                        mEventCountSinceGZChanged = 0;
+                        if (gz > 1) {
+                            Log.d(TAG, gz + " now screen is facing up.");
+                        } else if (gz < -3) {
+                            Log.d(TAG, gz + " now screen is facing down.");
+                        }
+                        PermissionLogReader.screen_orientation = gz;
+                    }
+                } else {
+                    if (mEventCountSinceGZChanged > 0) {
+                        mGZ = gz;
+                        mEventCountSinceGZChanged = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int i) {
+
+    }
+
+
+}

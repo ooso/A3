@@ -1,0 +1,80 @@
+package com.op_dfat;
+
+/**
+ * Created by arrigo on 1/12/17.
+ */
+
+public class SqliteDBStructure {
+
+    public static final String DATABASE_NAME = "DFAT.db";
+
+    public static final String APPS_LOGGED = "app_logged";
+    public static final String APP_NAME = "app_name";
+    public static final String CREATE_APPS_LOGGED = "CREATE TABLE " + APPS_LOGGED + " (" +
+                                                    APP_NAME + " VARCHAR(100), " +
+                                                    "PRIMARY KEY (" + APP_NAME + "));";
+
+    public static final String RESOURCES_LOGGED = "resources_logged";
+    public static final String OPID_NAME = "opid_name";
+
+
+    public static final String APPS_USED_RESOURCES = "apps_used_resources";
+    public static final String CREATE_APPS_USED_RESOURCES = "CREATE TABLE " + APPS_USED_RESOURCES + " (" +
+            APP_NAME + " VARCHAR(100), " +
+            OPID_NAME + " VARCHAR(100), " +
+            "PRIMARY KEY(" + APP_NAME + ", " + OPID_NAME + "));";
+
+    public static final String DATA_AGGREGATE = "data_aggregate";
+    public static final String TIME_STAMP = "last_used";
+    public static final String RUNNING = "app_state";
+    public static final String SCREEN_STATE = "screen_state";
+    public static final String SCREEN_ORIENTATION = "screen_orientation";
+    public static final String CLOSE_TO_OBJECT = "close_to_object";
+    // table data_aggregate initialization query
+    public static final String CREATE_DATA_AGGREGATE = "CREATE TABLE " + DATA_AGGREGATE + " ("
+            + APP_NAME + " VARCHAR(100), "
+            + OPID_NAME + " VARCHAR(100), "
+            + TIME_STAMP + " DATETIME, "
+            + RUNNING + " NUMERIC, "
+            + SCREEN_STATE + " NUMERIC, "
+            + SCREEN_ORIENTATION + " REAL, "
+            + CLOSE_TO_OBJECT + " NUMERIC, "
+            + "PRIMARY KEY (" + APP_NAME + ", " + OPID_NAME + ", " + TIME_STAMP + ", " + RUNNING + ", " + SCREEN_STATE + ", " + SCREEN_ORIENTATION + ", " + CLOSE_TO_OBJECT +"));";
+
+
+    public static final String DATA_ANALYZING = "data_analysis";
+    public static final String RESOURCE = "resource";
+    public static final String COUNT = "count";
+    public static final String ANOMALY = "anomaly";
+    public static final String SCAN_TIME = "scan_time";
+    public static final String ANOMALY_REASON = "anomaly_reason";
+    public static final String RESOURCE_ACCESS_TIME = "resource_access_time";
+
+    public static final String CREATE_DATA_ANALYZING = "CREATE TABLE " + DATA_ANALYZING
+            + " (" + APP_NAME + " VARCHAR(100), "
+            + RESOURCE + " VARCHAR(100), "
+            + COUNT + " NUMERIC, "
+            + ANOMALY + " VARCHAR(5), "
+            + SCAN_TIME + " DATETIME, "
+            + ANOMALY_REASON + " VARCHAR(200), "
+            + RESOURCE_ACCESS_TIME + " DATETIME, "
+            + "PRIMARY KEY (" + APP_NAME + ", " + RESOURCE + ", " + COUNT + ", " + ANOMALY + ", " + SCAN_TIME + ", " + ANOMALY_REASON +  ", " + RESOURCE_ACCESS_TIME + "));";
+
+    public static final String SCAN_TIMES_LOGGED = "scan_times_logged";
+    public static final String CREATE_SCAN_TIMES_LOGGED = "CREATE TABLE " + SCAN_TIMES_LOGGED + " (" +
+            SCAN_TIME + " DATETIME, " +
+            "PRIMARY KEY (" + SCAN_TIME + "));";
+
+    public static final String APPS_LOGGED_AT_SCAN_TIME= "apps_logged_at_scan_time";
+    public static final String CREATE_APPS_LOGGED_AT_SCAN_TIME = "CREATE TABLE " + APPS_LOGGED_AT_SCAN_TIME + " (" +
+            APP_NAME + " VARCHAR(100), " +
+            SCAN_TIME + " DATETIME, " +
+            "PRIMARY KEY(" + APP_NAME + ", " + SCAN_TIME + "));";
+
+    public static final String APPS_USED_RESOURCES_WHEN= "apps_used_resources_when";
+    public static final String CREATE_APPS_USED_RESOURCES_WHEN = "CREATE TABLE " + APPS_USED_RESOURCES_WHEN + " (" +
+            APP_NAME + " VARCHAR(100), " +
+            OPID_NAME + " VARCHAR(100), " +
+            TIME_STAMP + " DATETIME, " +
+            "PRIMARY KEY(" + APP_NAME + ", " + OPID_NAME + ", " + TIME_STAMP + "));";
+}

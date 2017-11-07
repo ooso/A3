@@ -1,0 +1,179 @@
+package com.op_dfat;
+
+import android.app.ProgressDialog;
+import android.content.Intent;
+import android.content.pm.LauncherApps;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.graphics.drawable.Drawable;
+import android.os.AsyncTask;
+import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.SearchView;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.WindowManager;
+import android.widget.Filter;
+import android.widget.ListView;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * Created by fakerinc on 27.01.17.
+ */
+
+public class Activity_Apps_to_scan extends AppCompatActivity implements LauncherAppsLoader.LauncherAppsListener{
+
+    ListView listView;
+    String appName;
+
+    private List<ResolveInfo> launcherApps;
+    ProgressDialog progressDialog;
+
+    private SearchView sv;
+    private Filter filter;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_apps_to_scan);
+
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN);
+        listView = (ListView) findViewById(R.id.appsToScanListView);
+        sv = (SearchView) findViewById(R.id.appsSearch);
+
+        LauncherAppsLoader.subscribe(this);
+        LauncherAppsLoader.loadLauncherApps(getApplicationContext());
+
+        ExcludedApps.loadExcludedApps(getApplicationContext());
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_options, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_settings) {
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        ExcludedApps.saveExcludedApps(getApplicationContext());
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        ExcludedApps.saveExcludedApps(getApplicationContext());
+    }
+
+    private List<Apps> createAppsList () {
+
+        List<Apps> appList = new ArrayList<>();
+
+        for (ResolveInfo resolveInfo: launcherApps) {
+            String packageName = resolveInfo.activityInfo.packageName;
+            Apps tmp = new Apps(Utility.getAppIcon(getApplicationContext(), packageName), Utility.packageToAppName(getApplicationContext(), packageName), packageName);
+            if (!appList.contains(tmp))
+                appList.add(tmp);
+        }
+
+        Collections.sort(appList, Apps.AppComparator.decending(Apps.AppComparator.getComparator(Apps.AppComparator.SORT_BY_NAME)));
+
+        return appList;
+    }
+
+    public void settingsButton(MenuItem item) {
+        Intent intent = new Intent(getApplicationContext(), SettingsPage.class);
+        startActivity(intent);
+    }
+
+    public void getHelp(MenuItem item) {
+
+    }
+
+    public void getAboutUs(MenuItem item) {
+
+    }
+
+    public void getAppsToScan(MenuItem item){
+
+    }
+
+    @Override
+    public void OnLoadingLauncherAppsFinished(List<ResolveInfo> _launcherApps) {
+        launcherApps = _launcherApps;
+
+        new AsyncTask<Void, Void, List<Apps>>() {
+
+            @Override
+            protected void onPreExecute() {
+                if (!Activity_Apps_to_scan.this.isFinishing())
+                    progressDialog = ProgressDialog.show(Activity_Apps_to_scan.this, "LOADING INFO", "Loading installed apps...");
+            }
+
+            @Override
+            protected List<Apps> doInBackground(Void... voids) {
+                return createAppsList();
+            }
+
+            @Override
+            protected void onPostExecute(List<Apps> app_data) {
+                final Adapter_Apps_to_scan adapter = new Adapter_Apps_to_scan(getApplicationContext(), R.id.adapter_apps_to_scan, app_data);
+
+                listView.setAdapter(adapter);
+
+                filter = adapter.getFilter();
+
+                adapter.notifyDataSetChanged();
+
+                setupSearchView();
+
+                progressDialog.dismiss();
+            }
+        }.execute();
+    }
+
+    // Sets up the SearchView
+    private void setupSearchView(){
+        sv.setIconifiedByDefault(false);
+        sv.setOnQueryTextListener(
+                new SearchView.OnQueryTextListener(){
+
+                    @Override
+                    public boolean onQueryTextSubmit(String query) {
+
+                        return false;
+                    }
+
+                    @Override
+                    public boolean onQueryTextChange(String newText) {
+                        filter.filter(newText);
+                        return true;
+                    }
+                }
+        );
+        sv.setSubmitButtonEnabled(false);
+        sv.setQueryHint("Search Here");
+    }
+
+}

@@ -1,0 +1,114 @@
+package com.dfat.fakerinc;
+
+import android.app.AppOpsManager;
+import android.content.Context;
+import android.util.Log;
+
+import java.lang.reflect.InvocationTargetException;
+import java.util.Date;
+import java.util.List;
+
+/**
+ * Created by arrigo on 12/6/16.
+ */
+
+public class PermissionLogReader {
+
+    private static PermissionLogReader permissionLogReader = null;
+    private Context context;
+
+    private Date lastScan;
+
+    private static final Class<?> INT_ARRAY_TYPE = new int[0].getClass();
+
+    private PermissionLogReader(Context ctx) {
+        this.context = ctx;
+        lastScan = new Date();
+        lastScan.setTime(0);
+    }
+
+    public static PermissionLogReader getInstance(Context ctx) {
+        if (permissionLogReader == null) {
+            permissionLogReader = new PermissionLogReader(ctx);
+        }
+        return permissionLogReader;
+    }
+
+    public void readPermissionLogReader(UsageManager usageManager, SqliteDBHelper sqliteDB) {
+        try
+        {
+            int [] allOps = getAllOps();
+            AppOpsManager aom = (AppOpsManager) context.getSystemService (Context.APP_OPS_SERVICE);
+            Class<? extends AppOpsManager> clsAom = aom.getClass ();
+            List<?> packageOpsList = (List<?>)
+                    clsAom.getMethod ("getPackagesForOps", INT_ARRAY_TYPE)
+                            .invoke (aom, allOps);  // if anything goes wrong, an exception is thrown
+
+            for (Object packageOps : packageOpsList)
+            {
+                Class<?> clsPackageOps = packageOps.getClass ();
+                String packageName = (String)clsPackageOps.getMethod ("getPackageName").invoke (packageOps);
+                List<?> opEntryList = (List<?>)clsPackageOps.getMethod ("getOps").invoke (packageOps);
+
+                for (Object oe : opEntryList)
+                {
+                    Class<?> clsOpEntry = oe.getClass ();
+                    int oeOpid = (int) clsOpEntry.getMethod ("getOp").invoke (oe);
+
+                    Date time = new Date ((long) clsOpEntry.getMethod ("getTime").invoke (oe));
+
+                    if (lastScan != null) {
+                        if (time.after(lastScan)) {
+                            evaluatePermission(usageManager, sqliteDB, oeOpid, packageName, time);
+                        }
+
+                    }
+                }
+            }
+            lastScan.setTime(System.currentTimeMillis());
+        }
+        catch (InvocationTargetException | NoSuchMethodException e)
+        {
+            Log.e ("PERMISSIONLOGREADER","GET_APP_OPS_STATS permission not set");
+        }
+        catch (Exception e){
+            Log.e ("PERMISSIONLOGREADER", "PACKAGE_USAGE_STATS permission not set");
+        }
+    }
+
+    private int [] getAllOps ()
+    {
+        // first count how many operations we need
+        int count = 0;
+        for (Permission p : Permission.values ())
+            count += p.getOpids ().length;
+        // next get the op codes
+        int [] result = new int[count];
+        int i = 0;
+        for (Permission p : Permission.values ())
+        {
+            int [] ops = p.getOpids ();
+            System.arraycopy (ops, 0, result, i, ops.length);
+            i += ops.length;
+        }
+        return result;
+    }
+
+    private void evaluatePermission (UsageManager usageManager, SqliteDBHelper sqliteDB, int oeOpid, String packageName, Date time) {
+        // check, whether a app with that packagename is currently running
+        int running = usageManager.checkUsageLog(packageName, time);
+
+        // convert package name to app name
+        String appName = usageManager.getAppNameFromPackage(packageName);
+        if (appName == null)
+            appName = packageName;
+
+        // convert opid into respectiv permission entry
+        String opidName = Permission.opIDtoPermission(oeOpid);
+        if (opidName == null)
+            opidName = ""+ oeOpid;
+
+        // insert log data into sqlite DB
+        sqliteDB.insert_into_DB(opidName, time, appName, running);
+    }
+}

@@ -1,0 +1,59 @@
+package com.op_dfat;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * Created by arrigo on 1/28/17.
+ */
+
+public class ExcludedApps {
+
+    // variable for the shared preference file
+    public static final String PREFS_NAME = "com.op_dfat.ExcludedApps";
+
+    private static List<String> excludedApps = new ArrayList<>();
+
+    public static void addToExcludedAppsList (String packageName) {
+        if (!excludedApps.contains(packageName)) {
+            excludedApps.add(packageName);
+        }
+    }
+
+    public static void removeFromExcludedAppsList (String packageName) {
+        if (excludedApps.contains(packageName)) {
+            excludedApps.remove(packageName);
+        }
+    }
+
+    public static boolean isAppExcluded (String packageName) {
+        return excludedApps.contains(packageName);
+    }
+
+    public static void saveExcludedApps (Context context) {
+        SharedPreferences preferences = context.getSharedPreferences(PREFS_NAME, context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+
+        Set<String> excludedAppsSet = new HashSet<>(excludedApps);
+        editor.putStringSet("excludedApps", excludedAppsSet);
+
+        editor.commit();
+    }
+
+    public static void loadExcludedApps (Context context) {
+        SharedPreferences preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        Set<String> loadedExcludedApps = preferences.getStringSet("excludedApps", null);
+
+        if (loadedExcludedApps != null) {
+            for (String excludedApp: loadedExcludedApps) {
+                if (!excludedApps.contains(excludedApp)) {
+                    excludedApps.add(excludedApp);
+                }
+            }
+        }
+    }
+}

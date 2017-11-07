@@ -1,0 +1,149 @@
+package com.op_dfat;
+
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.Drawable;
+import android.os.AsyncTask;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.webkit.WebView;
+import android.widget.ArrayAdapter;
+import android.widget.Filter;
+import android.widget.Filterable;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import com.squareup.picasso.Picasso;
+
+import java.io.InputStream;
+import java.net.URL;
+import java.util.AbstractList;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Observable;
+
+import de.halfreal.googleplayscraper.api.GooglePlayApi;
+import de.halfreal.googleplayscraper.api.HumanRequestBehavior;
+import de.halfreal.googleplayscraper.model.App;
+import rx.functions.Action0;
+import rx.functions.Action1;
+import rx.functions.Func1;
+
+import static android.graphics.Color.RED;
+
+public class Adapter_Blacklist extends ArrayAdapter<Apps> implements Filterable {
+
+    private Context context;
+    private int layoutResourceId;
+    private List<Apps> data;
+    private List<Apps> filtered = new ArrayList<>();
+
+    private FilterNames filter;
+
+
+    public Adapter_Blacklist(Context context, int layoutResourceId, List<Apps> data){
+        super(context, layoutResourceId, data);
+        this.context = context;
+        this.layoutResourceId = layoutResourceId;
+        this.data = data;
+        filtered = this.data;
+    }
+
+    @Override
+    public View getView(int position, View convertView, ViewGroup parent) {
+
+        View rowView = convertView;
+        ViewHolder viewHolder;
+
+        if (rowView == null) {
+            LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            rowView = inflater.inflate(R.layout.adapter_blacklist, parent, false);
+
+            viewHolder = new ViewHolder();
+
+            viewHolder.ivIcon = (ImageView) rowView.findViewById(R.id.blacklistAppIcon);
+            viewHolder.tvName = (TextView) rowView.findViewById(R.id.blacklistAppName);
+            viewHolder.tvScore = (TextView) rowView.findViewById(R.id.blacklistAnomalyScore);
+
+            rowView.setTag(viewHolder);
+        } else {
+            viewHolder = (ViewHolder) rowView.getTag();
+        }
+
+        Apps app = getItem(position);
+
+        Picasso.with(context).setLoggingEnabled(true);
+        Picasso.with(context).load(app.iconURL).resize(50, 50).into(viewHolder.ivIcon);
+
+        viewHolder.tvName.setText(app.appName);
+        viewHolder.tvScore.setText(app.score);
+
+        return rowView;
+    }
+
+    @Override
+    public int getCount() {
+        return filtered.size();
+    }
+
+    @Nullable
+    @Override
+    public Apps getItem(int position) {
+        return filtered.get(position);
+    }
+
+
+    @NonNull
+    @Override
+    public Filter getFilter() {
+        if (filter == null) {
+            filter = new FilterNames();
+        }
+        return filter;
+    }
+
+    private class FilterNames extends Filter {
+
+        @Override
+        protected FilterResults performFiltering(CharSequence charSequence) {
+
+            FilterResults results = new FilterResults();
+
+            if (charSequence != null && charSequence.length() != 0) {
+                List<Apps> resultList = new ArrayList<>();
+                for (Apps app: data) {
+                    if (app.appName.toLowerCase().contains(charSequence.toString().toLowerCase())) {
+                        resultList.add(app);
+                    }
+                }
+
+                results.count = resultList.size();
+                results.values = resultList;
+            } else {
+                results.count = data.size();
+                results.values = data;
+            }
+            return results;
+        }
+
+        @Override
+        protected void publishResults(CharSequence charSequence, FilterResults filterResults) {
+            filtered = (List<Apps>) filterResults.values;
+
+            notifyDataSetChanged();
+        }
+    }
+
+    private static class ViewHolder {
+        ImageView ivIcon;
+        TextView tvName;
+        TextView tvScore;
+    }
+}

@@ -1,0 +1,178 @@
+package com.op_dfat;
+
+import android.app.Activity;
+import android.app.Service;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Binder;
+import android.os.IBinder;
+import android.support.v4.app.ActivityCompat;
+import android.util.Log;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+public class MyService extends Service {
+    // repeat rate: every 5 seconds
+    private static final long REPEAT_TIME = 5;
+    // max period offset of how long the analysis is running before forced to stop
+    private final int force_stop_time_delay = 3;
+
+    // binder that is given to the clients, who wish to bind to this service
+    private final IBinder mBinder = new LocalBinder();
+
+    private ScheduledThreadPoolExecutor scheduledThreadPoolExecutor = null;
+    ScheduledFuture<?> periodicFuture;
+    ScheduledFuture<?> force_stop_Future;
+    public boolean analyzing = false;
+
+    private SqliteDBHelper sqliteDB;
+    private UsageManager usageManager;
+    private PermissionLogReader permissionLogReader;
+
+    private long start_scan_time_ms;
+
+    public class LocalBinder extends Binder
+    {
+        MyService getService() {
+            // Return this instance of LocalService so clients can call public methods
+            return MyService.this;
+        }
+    }
+
+    public Runnable logReader = new Runnable()
+    {
+        @Override
+        public void run() {
+            try {
+                permissionLogReader.readPermissionLogReader(usageManager, sqliteDB, start_scan_time_ms);
+            } catch (RuntimeException e) {
+                e.printStackTrace();
+            }
+        }
+    };
+
+    public Runnable force_stop_analysis = new Runnable() {
+        @Override
+        public void run() {
+            stopAnalyzing();
+            force_stop();
+        }
+    };
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return mBinder;
+    }
+
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        sendAnalyzing();
+        return super.onStartCommand(intent, flags, startId);
+    }
+
+    @Override
+    public void onCreate ()
+    {
+        super.onCreate ();
+        sqliteDB = SqliteDBHelper.getInstance(getApplicationContext());
+        usageManager = UsageManager.getInstance(getApplicationContext(), null);
+        permissionLogReader = PermissionLogReader.getInstance(getApplicationContext());
+
+        if (scheduledThreadPoolExecutor == null)
+            scheduledThreadPoolExecutor = new ScheduledThreadPoolExecutor(10);
+        scheduledThreadPoolExecutor.setRemoveOnCancelPolicy(true);
+        scheduledThreadPoolExecutor.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
+    }
+
+    @Override
+    public void onDestroy ()
+    {
+        super.onDestroy ();
+        saveBeforeClose();
+    }
+
+    public void startAnalyzing (long _start_scan_time_ms) {
+        start_scan_time_ms = _start_scan_time_ms;
+
+        start_force_stop();
+
+        if (!analyzing) {
+            if (scheduledThreadPoolExecutor != null) {
+                periodicFuture = scheduledThreadPoolExecutor.scheduleAtFixedRate(logReader, 0, REPEAT_TIME, TimeUnit.SECONDS);
+            }
+            analyzing = true;
+        }
+        sendAnalyzing();
+    }
+
+    public void stopAnalyzing () {
+
+        stop_force_stop();
+
+        if (analyzing) {
+            if (!periodicFuture.isCancelled())
+                periodicFuture.cancel(true);
+            else
+                periodicFuture.cancel(false);
+            if (periodicFuture.isDone())
+                Log.d("MYSERVICE", "Canceled Task");
+            analyzing = false;
+        }
+        sendAnalyzing();
+    }
+
+    private void saveBeforeClose() {
+        if (periodicFuture != null)
+            periodicFuture.cancel(true);
+        if (scheduledThreadPoolExecutor != null)
+            scheduledThreadPoolExecutor.shutdown();
+        writeDBtoFile();
+        Log.d("MYSERVICE", "Service stopped");
+    }
+
+    // ask permission to write to storage
+    public void DBtoFile(Activity activity) {
+        // "formulate", which permissions are required
+        String[] permissionStorage = {android.Manifest.permission.READ_EXTERNAL_STORAGE, android.Manifest.permission.WRITE_EXTERNAL_STORAGE};
+        // check, if permissions are granted
+        int permission = ActivityCompat.checkSelfPermission(activity, android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        if (permission != PackageManager.PERMISSION_GRANTED) {
+            // if permissions are denied, notify user to grant required permissions
+            ActivityCompat.requestPermissions(activity, permissionStorage, 1);
+        } else {
+            // if permissions were granted, write DB content to text file
+            writeDBtoFile();
+        }
+    }
+
+    public void writeDBtoFile () {
+        sqliteDB.writeDBtoFile();
+    }
+
+    private void start_force_stop() {
+        if (SettingsPage.enabled) {
+            force_stop_Future = scheduledThreadPoolExecutor.schedule(force_stop_analysis, SettingsPage.options_in_minutes[SettingsPage.selectedOptionIndex], TimeUnit.MINUTES);
+        } else
+            force_stop_Future = scheduledThreadPoolExecutor.schedule(force_stop_analysis, force_stop_time_delay, TimeUnit.DAYS);
+    }
+
+    private void stop_force_stop() {
+        if (!force_stop_Future.isCancelled())
+            force_stop_Future.cancel(true);
+    }
+
+    public void sendAnalyzing () {
+        Intent intent = new Intent();
+        intent.setAction("CHECK_ANALYZING");
+        intent.putExtra("analyzing", analyzing);
+        sendBroadcast(intent);
+    }
+    public void force_stop () {
+        Intent intent = new Intent();
+        intent.setAction("CHECK_ANALYZING");
+        intent.putExtra("forceStop", analyzing);
+        sendBroadcast(intent);
+    }
+}

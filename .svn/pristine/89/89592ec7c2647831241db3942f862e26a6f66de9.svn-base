@@ -1,0 +1,42 @@
+package com.op_dfat;
+
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import java.util.List;
+
+public class Activity_two extends AppCompatActivity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_two);
+
+        Intent intent = getIntent();
+        String message = intent.getStringExtra("appLabel");
+        TextView editText = (TextView) findViewById(R.id.textView);
+        editText.setText(message);
+
+
+
+
+        //Load pkg-List with all installed apps
+        final PackageManager pm = getPackageManager();
+        final Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
+        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+        final List<ResolveInfo> pkgAppsList = getApplicationContext().getPackageManager().queryIntentActivities( mainIntent, 0);
+
+        for (ResolveInfo rf : pkgAppsList){
+            if (rf.loadLabel(pm).toString().equals(message)){
+                ImageView imageView = (ImageView) findViewById(R.id.icon2);
+                imageView.setImageDrawable(rf.loadIcon(pm));
+                break;
+            }
+        }
+    }
+}

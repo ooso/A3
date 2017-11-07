@@ -1,0 +1,83 @@
+package com.op_dfat;
+
+public enum Permission
+{
+    SMS ("SMS", 14 /* OP_READ_SMS */,
+            15 /* OP_WRITE_SMS */,
+            16 /* OP_RECEIVE_SMS */,
+            17 /* OP_RECEIVE_EMERGECY_SMS [sic] */,
+            18 /* OP_RECEIVE_MMS */,
+            20 /* OP_SEND_SMS */),
+    CONTACTS ("Contacts", 4 /* OP_READ_CONTACTS */,
+            5 /* OP_WRITE_CONTACTS */),
+    LOCATION ("Location", 0 /* OP_COURSE_LOCATION */,
+            1 /* OP_FINE_LOCATION */,
+            2 /* OP_GPS */,
+            12 /* OP_NEIGHBORING_CELLS */,
+            41 /* OP_MONITOR_LOCATION */,
+            42 /* OP_MONITOR_HIGH_POWER_LOCATION */),
+    PHONE_NUMBER ("Phone number", 51 /* OP_READ_PHONE_STATE */),
+    CAMERA ("Camera", 26 /* OP_CAMERA */),
+    MICROPHONE ("Microphone", 27 /* OP_RECORD_AUDIO */);
+
+    private final String displayName;
+    private final int [] opids;
+
+    Permission (String displayName, int ... opids)
+    {
+        this.displayName = displayName;
+        this.opids = opids;
+    }
+
+    @Override
+    public String toString ()
+    {
+        return displayName;
+    }
+
+    public int [] getOpids ()
+    {
+        return opids;
+    }
+
+    public static String opIDtoPermission(int opid) {
+        int[] opids = Permission.CAMERA.getOpids();
+        for (int i = 0; i <opids.length; i++) {
+            if (opids[i] == opid) {
+                return Permission.CAMERA.toString();
+            }
+        }
+        opids = Permission.CONTACTS.getOpids();
+        for (int i = 0; i <opids.length; i++) {
+            if (opids[i] == opid) {
+                return Permission.CONTACTS.toString();
+            }
+        }
+        opids = Permission.LOCATION.getOpids();
+        for (int i = 0; i <opids.length; i++) {
+            if (opids[i] == opid) {
+                return Permission.LOCATION.toString();
+            }
+        }
+        opids = Permission.MICROPHONE.getOpids();
+        for (int i = 0; i <opids.length; i++) {
+            if (opids[i] == opid) {
+                return Permission.MICROPHONE.toString();
+            }
+        }
+        opids = Permission.PHONE_NUMBER.getOpids();
+        for (int i = 0; i <opids.length; i++) {
+            if (opids[i] == opid) {
+                return Permission.PHONE_NUMBER.toString();
+            }
+        }
+        opids = Permission.SMS.getOpids();
+        for (int i = 0; i <opids.length; i++) {
+            if (opids[i] == opid) {
+                return Permission.SMS.toString();
+            }
+        }
+        return null;
+    }
+}
+

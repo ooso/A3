@@ -1,0 +1,62 @@
+package com.op_dfat;
+
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.os.AsyncTask;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Created by arrigo on 1/28/17.
+ */
+
+public class LauncherAppsLoader {
+
+    private static List<ResolveInfo> launcherApps = null;
+    private static List<LauncherAppsListener> launcherAppsListeners = new ArrayList<>();
+
+    public static void subscribe (LauncherAppsListener launcherAppsListener) {
+        if (!launcherAppsListeners.contains(launcherAppsListener))
+            launcherAppsListeners.add(launcherAppsListener);
+    }
+
+    public static void loadLauncherApps(final Context context) {
+
+        if (launcherApps == null) {
+            new AsyncTask<Void, Void, Void>() {
+
+                @Override
+                protected Void doInBackground(Void... voids) {
+                    final PackageManager packageManager = context.getPackageManager();
+                    final Intent intent = new Intent(Intent.ACTION_MAIN, null);
+                    intent.addCategory(Intent.CATEGORY_LAUNCHER);
+
+                    launcherApps = packageManager.queryIntentActivities(intent, PackageManager.GET_META_DATA);
+                    return null;
+                }
+
+                @Override
+                protected void onPostExecute(Void aVoid) {
+                    OnLoadingLauncherAppsFinished();
+                }
+
+            }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        } else {
+            OnLoadingLauncherAppsFinished();
+        }
+    }
+
+    private static void OnLoadingLauncherAppsFinished () {
+        for (LauncherAppsListener listener: launcherAppsListeners) {
+            listener.OnLoadingLauncherAppsFinished(launcherApps);
+        }
+    }
+
+    public interface LauncherAppsListener {
+        void OnLoadingLauncherAppsFinished (List<ResolveInfo> _launcherApps);
+    }
+}

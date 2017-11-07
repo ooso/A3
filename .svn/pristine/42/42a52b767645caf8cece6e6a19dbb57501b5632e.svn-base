@@ -1,0 +1,94 @@
+package com.op_dfat;
+
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.database.Cursor;
+import android.os.AsyncTask;
+import android.util.Log;
+import android.widget.Toast;
+
+/**
+ * Created by arrigo on 1/25/17.
+ */
+
+public class InternetConnectionReceiver extends BroadcastReceiver {
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        if (Utility.networking(context)) {
+            sendSavedData(context);
+        }
+    }
+
+    void sendSavedData (final Context context) {
+
+        final SqliteDBHelper sqliteDBHelper = SqliteDBHelper.getInstance(context);
+
+        if (sqliteDBHelper.entries("SELECT * FROM " + SqliteDBStructure.SAVE_SCAN) > 0) {
+
+            new AsyncTask<Void, Void, Integer>() {
+
+                @Override
+                protected Integer doInBackground(Void... voids) {
+                    // get all the saved raw data
+                    Cursor cursor = sqliteDBHelper.get_data("SELECT * FROM " + SqliteDBStructure.SAVE_SCAN);
+
+                    if (cursor != null) {
+                        if (cursor.getCount() == 0) {
+                            return 1;
+                        }
+                        cursor.moveToFirst();
+                    } else {
+                        return -1;
+                    }
+
+                    // send it to the server
+                    while (!cursor.isAfterLast()) {
+                        MyClient.POST_rawdata(cursor.getString(cursor.getColumnIndexOrThrow(SqliteDBStructure.PACKAGE_NAME)),
+                                cursor.getString(cursor.getColumnIndexOrThrow(SqliteDBStructure.PERMISSION)),
+                                cursor.getString(cursor.getColumnIndexOrThrow(SqliteDBStructure.ACCESS_TIME)),
+                                cursor.getString(cursor.getColumnIndexOrThrow(SqliteDBStructure.APP_STATE)),
+                                cursor.getString(cursor.getColumnIndexOrThrow(SqliteDBStructure.SCREEN_STATE)),
+                                cursor.getString(cursor.getColumnIndexOrThrow(SqliteDBStructure.SCREEN_ORIENTATION)),
+                                cursor.getString(cursor.getColumnIndexOrThrow(SqliteDBStructure.CLOSE_TO_OBJECT)),
+                                cursor.getString(cursor.getColumnIndexOrThrow(SqliteDBStructure.SCAN_TIME)));
+                        cursor.moveToNext();
+                    }
+
+                    // get all the saved saved anomalies
+                    cursor = sqliteDBHelper.get_data("SELECT * FROM " + SqliteDBStructure.SAVE_ANOMALIES);
+
+                    if (cursor != null) {
+                        cursor.moveToFirst();
+                    }
+
+                    // send them to the server
+                    while (!cursor.isAfterLast()) {
+                        MyClient.POST_Anomaly(cursor.getString(cursor.getColumnIndexOrThrow(SqliteDBStructure.PACKAGE_NAME)),
+                                cursor.getString(cursor.getColumnIndexOrThrow(SqliteDBStructure.PERMISSION)),
+                                cursor.getString(cursor.getColumnIndexOrThrow(SqliteDBStructure.ANOMALY_REASON)),
+                                cursor.getString(cursor.getColumnIndexOrThrow(SqliteDBStructure.FROM_USER)));
+                        cursor.moveToNext();
+                    }
+
+                    // delete everything from both tables
+                    sqliteDBHelper.query("DELETE FROM " + SqliteDBStructure.SAVE_SCAN);
+                    sqliteDBHelper.query("DELETE FROM " + SqliteDBStructure.SAVE_ANOMALIES);
+
+                    return 0;
+                }
+
+                @Override
+                protected void onPostExecute(Integer integer) {
+                    if (integer == 0) {
+                        Toast.makeText(context, "Data send to server", Toast.LENGTH_SHORT).show();
+                    } else if (integer == -1){
+                        Toast.makeText(context, "Error sending data", Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+            }.execute();
+        }
+    }
+}

@@ -1,0 +1,111 @@
+package com.dfat.fakerinc;
+
+import android.app.Activity;
+import android.app.AppOpsManager;
+import android.app.usage.UsageStats;
+import android.app.usage.UsageStatsManager;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.provider.Settings;
+import android.util.Log;
+
+import java.util.Date;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Created by arrigo on 12/4/16.
+ */
+
+public class UsageManager {
+
+    public static final int MY_PERMISSIONS_REQUEST_PACKAGE_USAGE_STATS = 1;
+
+    public static UsageManager usageManager = null;
+
+    private Context context;
+    private Activity activity;
+
+    private Date beforeCurrentTime;
+    private Date afterFixTime;
+
+    private UsageStatsManager lUsageStatsManager;
+
+    private UsageManager(Context ctx, Activity act) {
+        this.context = ctx;
+        this.activity = act;
+        beforeCurrentTime = new Date();
+        afterFixTime = new Date();
+    }
+
+    public static UsageManager getInstance(Context cxt, Activity act) {
+        if (usageManager == null) {
+            usageManager = new UsageManager(cxt, act);
+        }
+        return usageManager;
+    }
+
+    public boolean hasPermission() {
+        AppOpsManager appOps = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
+        int mode = appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), context.getPackageName());
+        return mode == AppOpsManager.MODE_ALLOWED;
+    }
+
+    public Map<String, UsageStats> readUsageLog() {
+        // check, whether the phone has permission to access the phone's usage stats
+        if (!hasPermission()) {
+            activity.startActivityForResult(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS), MY_PERMISSIONS_REQUEST_PACKAGE_USAGE_STATS);
+        }
+        // get a reference to the UsageStatsManager
+        lUsageStatsManager = (UsageStatsManager) context.getSystemService(Context.USAGE_STATS_SERVICE);
+        // get all usage stats of the day
+        return lUsageStatsManager.queryAndAggregateUsageStats(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1), System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1));
+    }
+
+
+    public int checkUsageLog(String packageName, Date accessTime) {
+        Map<String, UsageStats> lUsageStatsList = readUsageLog();
+
+        if (lUsageStatsList != null && lUsageStatsList.size() != 0) {
+            if (lUsageStatsList.containsKey(packageName)) {
+                UsageStats usageStat = lUsageStatsList.get(packageName);
+
+                beforeCurrentTime.setTime(System.currentTimeMillis() + 1000);
+                afterFixTime.setTime(System.currentTimeMillis() - 60000);
+
+                return checkAppStatus(lUsageStatsManager, usageStat, packageName, accessTime);
+            } else {
+                // That's odd...
+                return -1;
+            }
+        } else {
+            Log.d("USAGEMANAGER", "usage permission not set");
+        }
+
+        return 0;
+    }
+
+    private int checkAppStatus (UsageStatsManager umanger, UsageStats u, String packageName, Date accessTime) {
+        if (!umanger.isAppInactive(packageName)) {
+            if (packageName.equals(u.getPackageName())) {
+                if (accessTime.before(beforeCurrentTime) && accessTime.after(afterFixTime)) {
+                    Log.d("USAGEMANAGER", getAppNameFromPackage(u.getPackageName()) + " = " + accessTime);
+                    return 1;
+                }
+            }
+        }
+        return 0;
+    }
+
+    public String getAppNameFromPackage(String packageName) {
+        PackageManager packageManager= context.getApplicationContext().getPackageManager();
+
+        try {
+            return (String) packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0));
+        } catch (PackageManager.NameNotFoundException e) {
+        }
+
+        return null;
+    }
+}

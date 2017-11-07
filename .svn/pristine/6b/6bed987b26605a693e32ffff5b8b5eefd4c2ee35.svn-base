@@ -1,0 +1,166 @@
+package com.op_dfat;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.Environment;
+import android.support.v4.app.ActivityCompat;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+
+/**
+ * Created by arrigo on 1/13/17.
+ */
+
+public class TextFileCreation {
+
+    public static void write_data_aggregate_to_file(Context context) {
+        JSONArray resultSet = new JSONArray();
+        String resultString = null;
+        Cursor cursor = SqliteDBHelper.getInstance(context).get_data_from_data_aggregate();
+        cursor.moveToFirst();
+
+        while (!cursor.isAfterLast()) {
+
+            int totalColumn = cursor.getColumnCount();
+            JSONObject rowObject = new JSONObject();
+
+            for (int i = 0; i < totalColumn; i++) {
+                if (cursor.getColumnName(i) != null) {
+                    try {
+                        if (cursor.getString(i) != null) {
+                            rowObject.put(cursor.getColumnName(i), cursor.getString(i));
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            try {
+                resultSet.put(rowObject);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            cursor.moveToNext();
+        }
+        cursor.close();
+
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        JsonParser jp = new JsonParser();
+        try {
+            JsonElement je = jp.parse(resultSet.toString(4));
+            resultString = gson.toJson(je);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        try {
+            File dir = new File(Environment.getExternalStorageDirectory().getAbsolutePath());
+            if (!dir.exists())
+                dir.mkdir();
+            FileWriter file = new FileWriter(dir+ "/DFAT_aggregate.txt");
+            file.write(resultString);
+            file.flush();
+            file.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        File file= new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/DFAT_aggregate.txt");
+        Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        intent.setData(Uri.fromFile(file));
+        context.sendBroadcast(intent);
+    }
+
+    public static void write_data_analyzing_to_file(Context context) {
+        JSONArray resultSet = new JSONArray();
+        String resultString = null;
+        Cursor cursor = SqliteDBHelper.getInstance(context).get_data_T2();
+        cursor.moveToFirst();
+        while (!cursor.isAfterLast()) {
+
+            int totalColumn = cursor.getColumnCount();
+            JSONObject rowObject = new JSONObject();
+
+            for (int i = 0; i < totalColumn; i++) {
+                if (cursor.getColumnName(i) != null) {
+                    try {
+                        if (cursor.getString(i) != null) {
+                            rowObject.put(cursor.getColumnName(i), cursor.getString(i));
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            try {
+                resultSet.put(rowObject);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            cursor.moveToNext();
+        }
+        cursor.close();
+
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        JsonParser jp = new JsonParser();
+        try {
+            JsonElement je = jp.parse(resultSet.toString(4));
+            resultString = gson.toJson(je);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        try {
+            File dir = new File(Environment.getExternalStorageDirectory().getAbsolutePath());
+            if (!dir.exists())
+                dir.mkdir();
+            FileWriter file = new FileWriter(dir+ "/DFAT_analyzing.txt");
+            file.write(resultString);
+            file.flush();
+            file.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        File file= new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/DFAT_analyzing.txt");
+        Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        intent.setData(Uri.fromFile(file));
+        context.sendBroadcast(intent);
+    }
+
+    private static void writeDBtoFile(Context context) {
+        write_data_aggregate_to_file(context);
+        write_data_analyzing_to_file(context);
+    }
+
+    // ask permission to write to storage
+    public static void writeSqliteDBToFile(Activity activity) {
+        // "formulate", which permissions are required
+        String[] permissionStorage = {android.Manifest.permission.READ_EXTERNAL_STORAGE, android.Manifest.permission.WRITE_EXTERNAL_STORAGE};
+        // check, if permissions are granted
+        int permission = ActivityCompat.checkSelfPermission(activity, android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        if (permission != PackageManager.PERMISSION_GRANTED) {
+            // if permissions are denied, notify user to grant required permissions
+            ActivityCompat.requestPermissions(activity, permissionStorage, 1);
+        } else {
+            // if permissions were granted, write DB content to text file
+            writeDBtoFile(activity.getApplicationContext());
+        }
+    }
+}

@@ -1,0 +1,76 @@
+package com.op_dfat;
+
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Vibrator;
+import android.util.Log;
+
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Created by arrigo on 1/13/17.
+ */
+
+public class AlarmReceiver extends BroadcastReceiver {
+
+    public static final String SETUP_ALARM = "com.op_dfat.AlarmReceiver.SetupAlarm";
+    public static final String CANCEL_ALARM = "com.op_dfat.AlarmReceiver.CancelAlarm";
+
+    @Override
+    public void onReceive(Context context, Intent _intent) {
+        switch(_intent.getAction()) {
+            case SETUP_ALARM:
+                Log.d("ALARMRECEIVER", "Wake up");
+                // wake up the app
+                wakeUp(context);
+                break;
+            case CANCEL_ALARM:
+                Log.d("ALARMRECEIVER", "Alarm canceled");
+                cancelWakeUpAlarm(context);
+        }
+    }
+
+    private void wakeUp (Context context) {
+        // first (re)start the main activity or open it, if already started
+        Intent intent = new Intent(context, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        context.startActivity(intent);
+
+        intent = new Intent(context, MyService.class);
+        intent.setAction(MyService.STOP_SCAN);
+        intent.putExtra("stopScanTime", System.currentTimeMillis());
+
+        context.startService(intent);
+
+        Vibrator vibrator = (Vibrator)context.getSystemService(Context.VIBRATOR_SERVICE);
+        vibrator.vibrate(new long[]{0, 200, 100, 200, 100, 200}, -1);
+    }
+
+    public static void setupWakeUpAlarm (Context context, long startTime, long duration_in_minutes) {
+        // get a reference to the alarm manager
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        // setup an intent
+        Intent intent = new Intent();
+        // specifiy an action for the receiver to listen to
+        intent.setAction(SETUP_ALARM);
+        PendingIntent alarmIntent = PendingIntent.getBroadcast(context, 0, intent, 0);
+        // set the alarm to fire at the given time
+        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, startTime + TimeUnit.MINUTES.toMillis(duration_in_minutes), alarmIntent);
+    }
+
+    public static void cancelWakeUpAlarm (Context context) {
+        // get a reference to the alarm manager
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        // setup an intent
+        Intent intent = new Intent();
+        // specifiy an action for the receiver to listen to
+        intent.setAction(SETUP_ALARM);
+        PendingIntent alarmIntent = PendingIntent.getBroadcast(context, 0, intent, 0);
+        // set the alarm to fire at the given time
+        alarmManager.cancel(alarmIntent);
+    }
+
+}

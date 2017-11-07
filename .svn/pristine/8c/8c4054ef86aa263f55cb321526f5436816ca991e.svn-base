@@ -1,0 +1,159 @@
+package com.op_dfat;
+
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.CompoundButton;
+import android.widget.Spinner;
+import android.widget.Switch;
+import android.widget.TextView;
+
+import org.w3c.dom.Text;
+
+import java.util.Dictionary;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+
+/**
+ * Created by Marvin on 15.11.2016.
+ */
+
+public class SettingsPage extends AppCompatActivity {
+
+    // view component variables
+    private Spinner scanDurationSpinner, scanIntervalSpinner, scanDeletionSpinner;
+
+    private final String[] scanDuration = new String[] {
+            TimeUnit.MILLISECONDS.toMinutes(ScanSettings.scanDurationsInMS[0]) + " Minutes",
+            TimeUnit.MILLISECONDS.toHours(ScanSettings.scanDurationsInMS[1]) + " Hour",
+            TimeUnit.MILLISECONDS.toHours(ScanSettings.scanDurationsInMS[2]) + " Hours",
+            TimeUnit.MILLISECONDS.toDays(ScanSettings.scanDurationsInMS[3]) + " Day",
+            "Default (7 days)"
+    };
+
+    private final String[] scanInterval = new String[] {
+            TimeUnit.MILLISECONDS.toSeconds(ScanSettings.scanIntervalInMS[0]) + " Seconds",
+            TimeUnit.MILLISECONDS.toSeconds(ScanSettings.scanIntervalInMS[1]) + " Seconds",
+            TimeUnit.MILLISECONDS.toSeconds(ScanSettings.scanIntervalInMS[2]) + " Seconds",
+    };
+
+    private final String[] scanDeletion = new String[] {
+            TimeUnit.MILLISECONDS.toDays(ScanSettings.scanDeletionInMS[0]) + " Days",
+            TimeUnit.MILLISECONDS.toDays(ScanSettings.scanDeletionInMS[1]) + " Days",
+            TimeUnit.MILLISECONDS.toDays(ScanSettings.scanDeletionInMS[2]) + " Days",
+            "Default (never)"
+    };
+
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.settingspage);
+
+        // get reference to the view components
+        scanDurationSpinner = (Spinner) findViewById(R.id.scanDurationSpinner);
+        scanIntervalSpinner = (Spinner) findViewById(R.id.scanIntervalSpinner);
+        scanDeletionSpinner = (Spinner) findViewById(R.id.scanDeletionSpinner);
+
+        ScanSettings.loadSettings(getApplicationContext());
+
+        // setup view components
+        setupSpinners();
+
+        scanDurationSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                ScanSettings.indexScanDuration = i;
+                scanDurationSpinner.setSelection(i);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+                // do nothing
+            }
+        });
+
+        scanIntervalSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                ScanSettings.indexScanInterval = i;
+                scanIntervalSpinner.setSelection(i);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+                // do nothing
+            }
+        });
+
+        scanDeletionSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                ScanSettings.indexScanDeletion = i;
+                scanDeletionSpinner.setSelection(i);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+                // do nothing
+            }
+        });
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        ScanSettings.saveSettings(getApplicationContext());
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+
+        int id = item.getItemId();
+        if (id == R.id.impressum) {
+            // do stuff
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+
+    public void getHelp(MenuItem item) {
+    }
+
+    public void getAboutUs(MenuItem item) {
+    }
+
+    void setupSpinners () {
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, scanDuration);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        scanDurationSpinner.setAdapter(adapter);
+
+        ArrayAdapter<String> adapter1 = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, scanInterval);
+        adapter1.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        scanIntervalSpinner.setAdapter(adapter1);
+
+        ArrayAdapter<String> adapter2 = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, scanDeletion);
+        adapter2.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        scanDeletionSpinner.setAdapter(adapter2);
+
+        scanDurationSpinner.setSelection(ScanSettings.indexScanDuration);
+        scanIntervalSpinner.setSelection(ScanSettings.indexScanInterval);
+        scanDeletionSpinner.setSelection(ScanSettings.indexScanDeletion);
+    }
+}

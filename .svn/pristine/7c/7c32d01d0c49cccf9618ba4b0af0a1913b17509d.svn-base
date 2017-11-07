@@ -1,0 +1,104 @@
+package com.op_dfat;
+
+import android.app.IntentService;
+import android.content.Intent;
+import android.util.Log;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+
+/**
+ * Created by Marvin on 12.12.2016.
+ */
+
+public class Datamining extends IntentService {
+
+    ArrayList<String> pkgNames;
+    ArrayList<Integer> anomalies;
+    ArrayList<String> criticalRecources = new ArrayList<>(Arrays.asList("Microphone", "Camera", "Contacts", "Location"));
+
+    SqliteDBHelper sqliteDBHelper;
+    String actTimeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
+
+    Date start_scan_time;
+
+    public Datamining() {
+        super("Datamining");
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        sqliteDBHelper = SqliteDBHelper.getInstance(this);
+        start_scan_time = new Date();
+    }
+
+    private void startAnalysis() {
+        pkgNames = getAppName();
+        anomalies = buildZeroArrayList(pkgNames);
+        Collections.sort(pkgNames);
+        collectResInfos(pkgNames);
+
+    }
+
+    private ArrayList<String> getAppName() {
+        return sqliteDBHelper.query_select_list("SELECT DISTINCT app_name FROM data_aggregate");
+    }
+
+    private ArrayList<Integer> buildZeroArrayList(ArrayList<String> names){
+        ArrayList<Integer> list = new ArrayList();
+        for(int i = 0; i < names.size(); i++){
+            list.add(i, 0);
+        }
+        return list;
+    }
+
+    private int checkForAnomaly(String appName, String resource, int count, int inBackground){
+        //RULESETS
+        //Prüfbedingung (Whatsapp und Microfon gibt Anomalie)
+        /*Log.d("Datamining: Appname:", appName);
+        Log.d("Datamining: Resource:", resource);
+        Log.d("Datamining: Count:", Integer.toString(count));
+        Log.d("Datamining: Background:", Integer.toString(inBackground));*/
+        if((appName.equals("WhatsApp")) && (resource.equals("RECORD_AUDIO"))) {
+            return 1;
+        }
+        //App im Hintergrund, kritische Resource
+        if((inBackground == 0) && criticalRecources.contains(resource)){
+            return 1;
+        }
+        return 0;
+    }
+
+    private void collectResInfos(ArrayList<String> names){
+        int resCount;
+        String insert;
+        List<String> resources;
+        int inBackground = 0;
+        for(int i = 0; i < names.size(); i++) {
+            resources = sqliteDBHelper.query_select_list("SELECT DISTINCT opid_name FROM data_aggregate WHERE app_name = '" + names.get(i) +"';");
+            for(int j = 0; j < resources.size(); j++){
+                resCount = sqliteDBHelper.entries("SELECT * FROM data_aggregate WHERE app_name = '" + names.get(i) + "' " + " AND opid_name = '" + resources.get(j) + "';");
+                ArrayList<Integer> temp = sqliteDBHelper.query_select_to_int("SELECT app_running FROM data_aggregate WHERE app_name = '" + names.get(i) + "' " + " AND opid_name = '" + resources.get(j) + "';");
+                if (temp != null) {
+                    inBackground = temp.get(0);
+                }
+                insert = "INSERT INTO data_analysis VALUES('"+ names.get(i) +"', '"+ resources.get(j) +"', "+ resCount + ", " + checkForAnomaly(names.get(i), resources.get(j), resCount, inBackground) + ",'" + actTimeStamp + "');";
+                //Log.d("Print inserts",insert);
+                sqliteDBHelper.query(insert);
+            }
+        }
+
+        sqliteDBHelper.write_data_analyzing_to_file();
+    }
+
+    @Override
+    protected void onHandleIntent(Intent intent) {
+        start_scan_time.setTime(intent.getLongExtra(MainActivity.IDENTIFIER, System.currentTimeMillis()));
+        startAnalysis();
+    }
+}
